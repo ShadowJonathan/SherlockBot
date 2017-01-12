@@ -36,7 +36,7 @@ func BBReady(s *discordgo.Session, r *discordgo.Ready) {
 	sh.OwnID = r.User.ID
 	sh.OwnAV = r.User.Avatar
 	sh.OwnName = r.User.Username
-	fmt.Println("Discord: Ready message received\nBB: I am '" + sh.OwnName + "'!\nBB: My User ID: " + sh.OwnID)
+	fmt.Println("Discord: Ready message received\nSH: I am '" + sh.OwnName + "'!\nSH: My User ID: " + sh.OwnID)
 }
 
 func Initialize(Token string) {
@@ -54,7 +54,7 @@ func Initialize(Token string) {
 	// handlers
 	sh.dg.AddHandler(BBReady)
 
-	fmt.Println("BB: Handlers installed")
+	fmt.Println("SH: Handlers installed")
 
 	err = sh.dg.Open()
 	if err == nil {
@@ -65,6 +65,6 @@ func Initialize(Token string) {
 	} else {
 		fmt.Println("Error opening websocket connection: ", err.Error())
 	}
-	fmt.Println("BBB: Blue belt stopping...")
+	fmt.Println("SH: Sherlock stopping...")
 	sh.dg.Close()
 }
