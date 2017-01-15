@@ -1,34 +1,28 @@
 package Belt
 
 import (
-	//"bytes"
-	"encoding/json"
 	fmt "fmt"
 	"io/ioutil"
-	"reflect"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
 
 type Version struct {
-	Major               byte
-	Minor               byte
-	Build               byte
-	Experimental        bool
-	ExperimentalVersion byte
+	Major byte
+	Minor byte
 }
 
 type Sherlock struct {
-	dg      *discordgo.Session
-	Debug   bool
-	version Version
-	OwnID   string
-	OwnAV   string
-	OwnName string
-	Stop    bool
+	dg       *discordgo.Session
+	Debug    bool
+	version  Version
+	OwnID    string
+	OwnAV    string
+	OwnName  string
+	Stop     bool
+	StopLoop bool
 }
 
 // Vars after this
@@ -42,215 +36,80 @@ var LastCheck = &LastChangeStatus{}
 
 var notifiers []string
 
-type ChangeMap map[string]map[string]map[string]map[string]string
-
-// (changed type) (ID) (type change) (old val/misc):new val/misc
-
-var Changes = make(map[string]map[string]map[string]map[string]string)
-var SubChanges = make(map[string]map[string]map[string]string)
-
-func CheckChange(G *GuildInfo, GID string) (*discordgo.Guild, bool) {
+func CheckChange(G *GuildInfo, GID string) (bool, *discordgo.Guild, *FullChangeStruct) {
 	ChGl, err := sh.dg.State.Guild(GID)
 	if err != nil {
 		fmt.Println("Error getting guild: " + err.Error())
 	}
-	LastCheck.Changeyes = false
-	if !reflect.DeepEqual(ChGl, G.g) {
-		fmt.Println("Change detected")
-	}
-	if !reflect.DeepEqual(ChGl.Channels, G.g.Channels) {
-		LastCheck.Changeyes = true
-		LastCheck.Change.channel = true
-	}
-	if !reflect.DeepEqual(ChGl.Members, G.g.Members) || ChGl.MemberCount != G.g.MemberCount {
-		LastCheck.Changeyes = true
-		LastCheck.Change.members = true
-	}
-	if !reflect.DeepEqual(ChGl.Roles, G.g.Roles) {
-		LastCheck.Changeyes = true
-		LastCheck.Change.roles = true
-	}
-	if !reflect.DeepEqual(ChGl.Presences, G.g.Presences) {
-		LastCheck.Changeyes = true
-		LastCheck.Change.presence = true
-	}
-	if ChGl.Icon != G.g.Icon || ChGl.Large != G.g.Large || ChGl.Name != G.g.Name || ChGl.OwnerID != G.g.OwnerID || ChGl.Region != G.g.Region {
-		LastCheck.Changeyes = true
-		LastCheck.Change.beginvars = true
-	}
-	return ChGl, LastCheck.Changeyes
+	Equal, FCS := DeepEqual(G.g, ChGl)
+	return Equal, ChGl, FCS
 }
 
 // compare vals here
 
-func CompareChannel(Last *discordgo.Channel, New *discordgo.Channel) (bool, map[string]map[string]map[string]string) {
-	var ChS = make(map[string]map[string]map[string]string)
-	var Ident bool
-	Ident = false
-	if Last.ID == New.ID {
-		Ident = true
-		if !reflect.DeepEqual(Last.Name, New.Name) {
-			ChS[Last.ID]["Name"][Last.Name] = New.Name
-		}
-		if !reflect.DeepEqual(Last.Topic, New.Topic) {
-			ChS[Last.ID]["Topic"][Last.Topic] = New.Topic
-		}
-		if !reflect.DeepEqual(Last.PermissionOverwrites, New.PermissionOverwrites) {
-			for _, LPerm := range Last.PermissionOverwrites {
-				for _, NPerm := range New.PermissionOverwrites {
-					if reflect.DeepEqual(LPerm.ID, NPerm.ID) {
-						if !reflect.DeepEqual(LPerm.Allow, NPerm.Allow) {
-							var LAllow int64
-							LAllow = int64(LPerm.Allow)
-							var NAllow int64
-							NAllow = int64(NPerm.Allow)
-							ChS[Last.ID]["AllowPerm"][LPerm.ID] = LPerm.Type + " " + LPerm.ID + " " + strconv.FormatInt(LAllow, 10) + " " + strconv.FormatInt(NAllow, 10)
-
-						}
-						if reflect.DeepEqual(LPerm.Deny, NPerm.Deny) {
-							var LDeny int64
-							LDeny = int64(LPerm.Deny)
-							var NDeny int64
-							NDeny = int64(NPerm.Deny)
-							ChS[Last.ID]["DenyPerm"][LPerm.ID] = LPerm.Type + " " + LPerm.ID + " " + strconv.FormatInt(LDeny, 10) + " " + strconv.FormatInt(NDeny, 10)
-
-						}
-					}
-					// delete
-					if len(Last.PermissionOverwrites) < len(New.PermissionOverwrites) {
-						var check bool
-						check = false
-						for _, PO := range Last.PermissionOverwrites {
-							for _, PA := range New.PermissionOverwrites {
-								if PO.ID == PA.ID {
-									check = true
-								}
-							}
-							if check == false {
-								var LDeny int64
-								LDeny = int64(PO.Deny)
-								var LAllow int64
-								LAllow = int64(PO.Allow)
-								ChS[Last.ID]["PermPoof"][PO.ID] = PO.Type + " " + PO.ID + " " + " " + strconv.FormatInt(LAllow, 10) + " " + strconv.FormatInt(LDeny, 10)
-							}
-						}
-					}
-					// create
-					if len(Last.PermissionOverwrites) > len(New.PermissionOverwrites) {
-						var check bool
-						check = false
-						var PO *discordgo.PermissionOverwrite
-						for _, PA := range Last.PermissionOverwrites {
-							for _, PO = range New.PermissionOverwrites {
-								if PO.ID == PA.ID {
-									check = true
-								}
-							}
-							if check == false {
-								var NDeny int64
-								NDeny = int64(PO.Deny)
-								var NAllow int64
-								NAllow = int64(PO.Allow)
-								ChS[Last.ID]["PermWoah"][PO.ID] = PO.Type + " " + strconv.FormatInt(NAllow, 10) + " " + strconv.FormatInt(NDeny, 10)
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	return Ident, ChS
-}
-
 // rest funcs
 
-func AppendChange(G *discordgo.Guild) []string {
+func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChangeStruct) []string {
 	var ChangeString []string
 	var NewString string
-	if LastCheck.Change.channel == true {
-		LastChannels := LastCheck.GI.g.Channels
-		NewChannels := G.Channels
-		if len(LastChannels) != len(NewChannels) {
-			// code for "new channel" here >.>
-		} else {
-			for _, LCh := range LastChannels {
-				for _, NCh := range NewChannels {
-					Yes, ChChanges := CompareChannel(LCh, NCh)
-					if Yes {
-						Changes["Channel"] = ChChanges
+	if TotC.Guild.Name {
+		ChangeString = append(ChangeString, "Server '"+Gold.Name+" changed it's name to '"+Gnew.Name+"!")
+	}
+	if TotC.Guild.OwnerID {
+		ChangeString = append(ChangeString, "`ALERT!`\n`ALERT!`\n`ALERT!`\nServer "+Gold.Name+"'s owner just changed from "+GetUserName(Gold.OwnerID, Gold)+" to "+GetUserName(Gnew.OwnerID, Gnew)+"!!!")
+	}
+	if TotC.Guild.Icon {
+		ChangeString = append(ChangeString, "Server "+Gold.Name+" changed it's icon!")
+	}
+	if TotC.Guild.Region {
+		ChangeString = append(ChangeString, "Server "+Gold.Name+" changed it's region!\nPreviously: "+Gold.Region+"\nNow: "+Gnew.Region)
+	}
+	if TotC.Guild.channels {
+		for _, CCh := range TotC.Channels {
+			if !CCh.ExistCrisis {
+				Cold := GetChannel(CCh.ID, Gold)
+				Cnew := GetChannel(CCh.ID, Gnew)
+				if CCh.Name {
+					ChangeString = append(ChangeString, "Channel "+Cold.Name+" changed it's name to "+Cnew.Name+"!")
+				}
+				if CCh.Topic {
+					ChangeString = append(ChangeString, "Channel "+Cold.Name+" changed topics from "+Cold.Topic+" to "+Cnew.Topic+"!")
+				}
+				if CCh.perms {
+					for _, P := range CCh.Perms {
+						if !P.ExistCrisis {
+							Oor := GetOR(P.ID, Cold)
+							Nor := GetOR(P.ID, Cnew)
+							if Oor.Type == "role" {
+								Ror := GetRole(P.ID, Gold)
+
+								if P.Allow {
+									ChangeString = append(ChangeString, "Channel "+Cold.Name+" has changed it's allowed overwrite-permissions for the "+Ror.Name+" role changed from `"+strconv.FormatInt(int64(Oor.Allow), 10)+"` to `"+strconv.FormatInt(int64(Nor.Allow), 10)+"`")
+								}
+								if P.Deny {
+									ChangeString = append(ChangeString, "Channel "+Cold.Name+" has changed it's denied overwrite-permissions for the "+Ror.Name+" role changed from `"+strconv.FormatInt(int64(Oor.Deny), 10)+"` to `"+strconv.FormatInt(int64(Nor.Deny), 10)+"`")
+								}
+							} else {
+								Mor := GetUser(P.ID, Gold)
+
+								if P.Allow {
+									ChangeString = append(ChangeString, "Channel "+Cold.Name+" has changed it's allowed overwrite-permissions for "+Mor.Username+" changed from `"+strconv.FormatInt(int64(Oor.Allow), 10)+"` to `"+strconv.FormatInt(int64(Nor.Allow), 10)+"`")
+								}
+								if P.Deny {
+									ChangeString = append(ChangeString, "Channel "+Cold.Name+" has changed it's denied overwrite-permissions for "+Mor.Username+" changed from `"+strconv.FormatInt(int64(Oor.Deny), 10)+"` to `"+strconv.FormatInt(int64(Nor.Deny), 10)+"`")
+								}
+							}
+						}
 					}
 				}
 			}
 		}
 	}
-	for i := 0; i <= len(Changes); i++ {
-		for i, ChCh := range Changes {
-			if reflect.DeepEqual(Changes[i], Changes["Channel"]) { //(ID) (type change) (old val/misc):new val/misc
-				ChannelChange := ParseChannelChange(ChCh, LastCheck.GI.g)
-				ChangeString = AppendSSlices(ChangeString, ChannelChange)
-			}
-		}
+	if TotC.Guild.roles {
+
 	}
 
-	ChangeString = append(ChangeString, NewString)
 	return ChangeString
-}
-
-func ParseChannelChange(ChCh map[string]map[string]map[string]string, G *discordgo.Guild) []string {
-	//(ID) (type change) (old val/misc):new val/misc
-	var ReturnStrings []string
-	for _, check := range G.Channels {
-		if len(ChCh[check.ID]) > 0 {
-			var CheckID = ChCh[check.ID]
-			// Name Topic DenyPerm AllowPerm PermPoof PermWoah
-			for i, CheckType := range CheckID {
-				if reflect.DeepEqual(CheckID[i], CheckID["Name"]) {
-					ReturnStrings = append(ReturnStrings, "Channel '"+check.ID+"' just changed it's name from '"+check.Name+"' to '"+CheckType[check.Name]+"'!")
-				}
-				if reflect.DeepEqual(CheckID[i], CheckID["Topic"]) {
-					ReturnStrings = append(ReturnStrings, "Channel '"+check.Name+"' just changed it's topic from '"+check.Topic+"' to '"+CheckType[check.Topic])
-				}
-				if reflect.DeepEqual(CheckID[i], CheckID["AllowPerm"]) {
-					for F, AllowMap := range CheckID["AllowPerm"] {
-						for _, ChannelPerm := range check.PermissionOverwrites {
-							if reflect.DeepEqual(CheckID["AllowPerm"][F], CheckID["AllowPerm"][ChannelPerm.ID]) {
-								var Perm = AllowMap
-								// type ID Last New
-								Perms := strings.Split(Perm, " ")
-								if Perms[0] == "role" {
-									Role := GetRole(Perms[1], G)
-									ReturnStrings = append(ReturnStrings, "Role '"+Role.Name+"' on channel '"+check.Name+"' just got it's allowed permissions changed from `"+Perms[2]+"` to `"+Perms[3]+"`!")
-								}
-							}
-						}
-					}
-				}
-				if reflect.DeepEqual(CheckID[i], CheckID["DenyPerm"]) {
-					for F, DenyMap := range CheckID["DenyPerm"] {
-						for _, ChannelPerm := range check.PermissionOverwrites {
-							if reflect.DeepEqual(CheckID["DenyPerm"][F], CheckID["DenyPerm"][ChannelPerm.ID]) {
-								var Perm = DenyMap
-								// type ID Last New
-								Perms := strings.Split(Perm, " ")
-								if Perms[0] == "role" {
-									Role := GetRole(Perms[1], G)
-									ReturnStrings = append(ReturnStrings, "Role '"+Role.Name+"' on channel '"+check.Name+"' just got it's denied permissions changed from `"+Perms[2]+"` to `"+Perms[3]+"`!")
-								}
-							}
-						}
-					}
-				}
-				if reflect.DeepEqual(CheckID[i], CheckID["PermPoof"]) {
-
-				}
-				if reflect.DeepEqual(CheckID[i], CheckID["PermWoah"]) {
-
-				}
-			}
-		}
-	}
-	return ReturnStrings
-
 }
 
 func StartCheckLoop() {
@@ -265,6 +124,68 @@ func StartCheckLoop() {
 	PrimeGuild = string(GLDB)
 	ResumeCheck(PrimeGuild)
 	go CheckLoop(LastCheck, PrimeGuild)
+}
+
+func CheckLoop(LC *LastChangeStatus, Gid string) {
+	LastCheck = LC
+	var G *GuildInfo
+	for sh.StopLoop == false {
+		time.Sleep(30 * time.Second)
+		fmt.Println("Loop debug")
+		G = LastCheck.GI
+		IsEqual, NewGuild, AllChange := CheckChange(G, Gid)
+		if !IsEqual {
+			_, _, _, H, Mi, S := GetTime()
+			h := strconv.FormatInt(int64(H), 10)
+			mi := strconv.FormatInt(int64(Mi), 10)
+			s := strconv.FormatInt(int64(S), 10)
+
+			Responses := AppendChange(LastCheck.GI.g, NewGuild, AllChange)
+			for _, N := range notifiers {
+				sh.dg.ChannelMessageSend(N, "-"+h+":"+mi+";"+s+"-")
+				for _, R := range Responses {
+					sh.dg.ChannelMessageSend(N, R)
+				}
+			}
+		}
+		LastCheck = SetLC(LastCheck, NewGuild)
+		err := WriteGLDfile(LastCheck.GI, false)
+		if err != nil {
+			fmt.Println("Error writing GLD file after check: " + err.Error())
+			sh.StopLoop = true
+		}
+	}
+
+}
+
+func ResumeCheck(Gid string) {
+	G, err := GetGLDfile(Gid)
+	if err != nil || G.NeedRestall {
+		Initnewguild(Gid)
+		return
+	}
+	LastCheck.GI = G
+	if G.BotUP == true {
+		LastCheck.SiLaChBisTerm = true
+		fmt.Println("Warning: Sherlock hasn't been closed properly since last boot!")
+	} else {
+		LastCheck.SiLaChBisTerm = false
+	}
+	IsEqual, NewGuild, AllChange := CheckChange(G, Gid)
+	for _, N := range notifiers {
+		sh.dg.ChannelMessageSend(N, "Sherlock's out of 221b, ready for some investigation!")
+	}
+	if !IsEqual {
+		Responses := AppendChange(LastCheck.GI.g, NewGuild, AllChange)
+		for _, N := range notifiers {
+			sh.dg.ChannelMessageSend(N, "New Changes in since last taxi ride:")
+			for _, R := range Responses {
+				sh.dg.ChannelMessageSend(N, R)
+			}
+		}
+	}
+	LastCheck = SetLC(LastCheck, NewGuild)
+	_ = WriteGLDfile(LastCheck.GI, false)
 }
 
 func Initnewguild(GID string) {
@@ -283,93 +204,6 @@ func Initnewguild(GID string) {
 		fmt.Println("New guild file for " + BGuild.Name + " made, ready for logging!")
 	} else {
 		fmt.Println("Error getting guild status: " + err.Error())
-	}
-}
-
-func CheckLoop(LC *LastChangeStatus, Gid string) {
-	LastCheck = LC
-	var G *GuildInfo
-	for sh.Stop == false {
-		time.Sleep(30 * time.Second)
-		fmt.Println("Loop debug")
-		G = LastCheck.GI
-		NewChange, change := CheckChange(G, Gid)
-		if change {
-			_, _, _, H, Mi, S := GetTime()
-			h := strconv.FormatInt(int64(H), 10)
-			mi := strconv.FormatInt(int64(Mi), 10)
-			s := strconv.FormatInt(int64(S), 10)
-
-			Responses := AppendChange(NewChange)
-			for _, N := range notifiers {
-				sh.dg.ChannelMessageSend(N, "-"+h+":"+mi+";"+s+"-")
-				for _, R := range Responses {
-					sh.dg.ChannelMessageSend(N, R)
-				}
-			}
-		}
-	}
-}
-
-func ResumeCheck(Gid string) {
-	G, err := GetGLDfile(Gid)
-	if err != nil || G.NeedRestall {
-		Initnewguild(Gid)
-		return
-	}
-	LastCheck.GI = G
-	if G.BotUP == true {
-		LastCheck.SiLaChBisTerm = true
-		fmt.Println("Warning: Sherlock hasn't been closed properly since last boot!")
-	} else {
-		LastCheck.SiLaChBisTerm = false
-	}
-	LastCheck.Firstcheck = true
-	NewChange, change := CheckChange(G, Gid)
-	for _, N := range notifiers {
-		sh.dg.ChannelMessageSend(N, "Sherlock's out of 221b, ready for some investigation!")
-	}
-	if change {
-		Responses := AppendChange(NewChange)
-		for _, N := range notifiers {
-			sh.dg.ChannelMessageSend(N, "New Changes in since last taxi ride:")
-			for _, R := range Responses {
-				sh.dg.ChannelMessageSend(N, R)
-			}
-		}
-	}
-	LastCheck.GI.g = NewChange
-	LastCheck.GI.Lastcheck.Year, LastCheck.GI.Lastcheck.Month, LastCheck.GI.Lastcheck.Day, LastCheck.GI.Lastcheck.Hour, LastCheck.GI.Lastcheck.Min, LastCheck.GI.Lastcheck.Sec = GetTime()
-	_ = WriteGLDfile(LastCheck.GI, false)
-}
-
-type GuildInfo struct {
-	g           *discordgo.Guild
-	Lastcheck   TimeFormat
-	BotUP       bool
-	NeedRestall bool
-}
-
-type TimeFormat struct {
-	Year  int
-	Month time.Month
-	Day   int
-	Hour  int
-	Min   int
-	Sec   int
-}
-
-type LastChangeStatus struct {
-	GI            *GuildInfo
-	SiLaChBisTerm bool
-	Firstcheck    bool
-	Changeyes     bool
-	Change        struct {
-		beginvars bool
-		roles     bool
-		members   bool
-		presence  bool
-		channel   bool
 	}
 }
 
@@ -405,83 +239,11 @@ func ProcessCMD(CMD string, M *discordgo.Message) {
 	}
 }
 
-func GetTime() (int, time.Month, int, int, int, int) {
-	Year := time.Now().Year()
-	Month := time.Now().Month()
-	Day := time.Now().Day()
-	Hour := time.Now().Hour()
-	Min := time.Now().Minute()
-	Sec := time.Now().Second()
-	return Year, Month, Day, Hour, Min, Sec
-}
-
-func GetGLDfile(GID string) (*GuildInfo, error) {
-	DATA, err := ioutil.ReadFile(GID + ".GLD")
-	var LLG *GuildInfo
-	Y, Mo, D, H, Mi, S := GetTime()
-	TG, _ := sh.dg.State.Guild(GID)
-	LLG = &GuildInfo{
-		Lastcheck:   TimeFormat{Year: Y, Month: Mo, Day: D, Hour: H, Min: Mi, Sec: S},
-		g:           TG,
-		BotUP:       true,
-		NeedRestall: false,
-	}
-	if err == nil {
-		err := json.Unmarshal(DATA, LLG)
-		if err == nil {
-			return LLG, nil
-		} else {
-			fmt.Println("Error Unmarshal-ing GLD: " + err.Error())
-			return LLG, err
-		}
-	}
-	LLG = &GuildInfo{
-		NeedRestall: true,
-	}
-	return LLG, nil
-}
-
-func WriteGLDfile(G *GuildInfo, Isb bool) error {
-	GID, GIDerr := json.Marshal(G)
-	if GIDerr == nil {
-		if Isb == false {
-			ioutil.WriteFile(G.g.ID+".GLD", GID, 0777)
-		}
-		if Isb == true {
-			ioutil.WriteFile("B-"+G.g.ID+".GLD", GID, 0777)
-		}
-		return nil
-	} else {
-		fmt.Println("GLD writing error: " + GIDerr.Error())
-		return GIDerr
-	}
-}
-
-func GetRole(RID string, g *discordgo.Guild) *discordgo.Role {
-	for _, R := range g.Roles {
-		if RID == R.ID {
-			return R
-		}
-	}
-	var Defaultrole = &discordgo.Role{
-		ID:          g.ID,
-		Name:        "@everyone",
-		Managed:     false,
-		Mentionable: false,
-		Hoist:       false,
-		Color:       0,
-		Position:    0,
-		Permissions: 0,
-	}
-	return Defaultrole
-}
-
-func AppendSSlices(BeginSlice []string, MergeSlice []string) []string {
-	var ProcessSlice = BeginSlice
-	for _, MergeString := range MergeSlice {
-		ProcessSlice = append(ProcessSlice, MergeString)
-	}
-	return ProcessSlice
+func DeepEqual(a *discordgo.Guild, b *discordgo.Guild) (bool, *FullChangeStruct) {
+	var Equal = true
+	var TotC *FullChangeStruct
+	Equal, TotC = CompareGuild(a, b, TotC, Equal)
+	return Equal, TotC
 }
 
 // init
@@ -489,9 +251,10 @@ func AppendSSlices(BeginSlice []string, MergeSlice []string) []string {
 func Initialize(Token string) {
 	isdebug, err := ioutil.ReadFile("debugtoggle")
 	sh = &Sherlock{
-		version: Version{0, 1, 0, false, 0},
-		Debug:   (err == nil && len(isdebug) > 0),
-		Stop:    false,
+		version:  Version{0, 1},
+		Debug:    (err == nil && len(isdebug) > 0),
+		Stop:     false,
+		StopLoop: false,
 	}
 	sh.dg, err = discordgo.New(Token)
 	if err != nil {
