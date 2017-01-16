@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -13,7 +14,7 @@ import (
 func SetLC(LC *LastChangeStatus, g *discordgo.Guild) *LastChangeStatus {
 	GI := LC.GI
 	GI.g = g
-	GI.Lastcheck.Year, GI.Lastcheck.Month, GI.Lastcheck.Day, GI.Lastcheck.Hour, GI.Lastcheck.Min, GI.Lastcheck.Sec = GetTime()
+	GI.Lastcheck = AltTimeForm()
 	LC.GI = GI
 	return LC
 }
@@ -36,6 +37,16 @@ func GetUser(ID string, Guild *discordgo.Guild) *discordgo.User {
 	}
 	var UU *discordgo.User
 	return UU
+}
+
+func GetMember(ID string, Guild *discordgo.Guild) *discordgo.Member {
+	for _, M := range Guild.Members {
+		if M.User.ID == ID {
+			return M
+		}
+	}
+	var MM *discordgo.Member
+	return MM
 }
 
 func GetUserName(ID string, Guild *discordgo.Guild) string {
@@ -81,21 +92,49 @@ func GetTime() (int, time.Month, int, int, int, int) {
 	return Year, Month, Day, Hour, Min, Sec
 }
 
+func GetTimeForm() *TimeFormat {
+	Year, Month, Day, Hour, Min, Sec := GetTime()
+	var T = &TimeFormat{
+		Year:  Year,
+		Month: Month,
+		Day:   Day,
+		Hour:  Hour,
+		Min:   Min,
+		Sec:   Sec,
+	}
+	return T
+}
+func AltTimeForm() TimeFormat {
+	var TM TimeFormat
+	TM.Year, TM.Month, TM.Day, TM.Hour, TM.Min, TM.Sec = GetTime()
+	return TM
+}
+
+func GetGuild(Gid string) (*discordgo.Guild, error) {
+	return sh.dg.State.Guild(Gid)
+}
+
 func GetGLDfile(GID string) (*GuildInfo, error) {
 	DATA, err := ioutil.ReadFile(GID + ".GLD")
-	var LLG *GuildInfo
-	Y, Mo, D, H, Mi, S := GetTime()
-	TG, _ := sh.dg.State.Guild(GID)
-	LLG = &GuildInfo{
-		Lastcheck:   TimeFormat{Year: Y, Month: Mo, Day: D, Hour: H, Min: Mi, Sec: S},
-		g:           TG,
-		BotUP:       true,
-		NeedRestall: false,
-	}
+	var LLG = &GuildInfo{}
+	// Y, Mo, D, H, Mi, S := GetTime()
 	if err == nil {
 		err := json.Unmarshal(DATA, LLG)
 		if err == nil {
-			return LLG, nil
+			LLG.g = &discordgo.Guild{}
+			GU, err := ioutil.ReadFile(GID + "/main.GLD")
+			if err == nil {
+				err = json.Unmarshal(GU, LLG.g)
+				if err == nil {
+					return LLG, nil
+				} else {
+					fmt.Println("Error Unmarshal-ing GLD: " + err.Error())
+					return LLG, err
+				}
+			} else {
+				fmt.Println("Error Unmarshal-ing GLD: " + err.Error())
+				return LLG, err
+			}
 		} else {
 			fmt.Println("Error Unmarshal-ing GLD: " + err.Error())
 			return LLG, err
@@ -108,13 +147,38 @@ func GetGLDfile(GID string) (*GuildInfo, error) {
 }
 
 func WriteGLDfile(G *GuildInfo, Isb bool) error {
+	if G.g == nil {
+		panic(G.g)
+	}
 	GID, GIDerr := json.Marshal(G)
-	if GIDerr == nil {
+	g := G.g
+	GU, GUerr := json.Marshal(g)
+	if GU == nil {
+		panic(GU)
+	}
+	if GIDerr == nil && GUerr == nil {
 		if Isb == false {
 			ioutil.WriteFile(G.g.ID+".GLD", GID, 0777)
+			err := ioutil.WriteFile(G.g.ID+"/main.GLD", GU, 0777)
+			if err != nil {
+				fmt.Println(err)
+				panic(err)
+			}
+			T := GetTimeForm()
+			ioutil.WriteFile(G.g.ID+"/"+string(T.Year)+"."+T.Month.String()+"."+string(T.Day)+"-"+string(T.Hour)+"."+string(T.Min)+"."+string(T.Sec)+".GLD", GU, 0777)
+			if err != nil {
+				fmt.Println(err)
+				panic(err)
+			}
 		}
 		if Isb == true {
 			ioutil.WriteFile("B-"+G.g.ID+".GLD", GID, 0777)
+			os.Mkdir(G.g.ID, 0777)
+			err := ioutil.WriteFile(G.g.ID+"/MASTER.GLD", GU, 0777)
+			if err != nil {
+				fmt.Println(err)
+				panic(err)
+			}
 		}
 		return nil
 	} else {

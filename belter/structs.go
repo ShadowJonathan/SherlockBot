@@ -44,6 +44,8 @@ type MemberChange struct {
 	}
 	Nick        bool
 	Roles       bool
+	RoleNew     bool
+	RoleRem     bool
 	ExistCrisis bool
 	Leave       bool
 	Join        bool
@@ -66,10 +68,10 @@ type FullChangeStruct struct {
 }
 
 type GuildInfo struct {
-	g           *discordgo.Guild
-	Lastcheck   TimeFormat
-	BotUP       bool
-	NeedRestall bool
+	g           *discordgo.Guild `json:"g"`
+	Lastcheck   TimeFormat       `json:"TimeForm"`
+	BotUP       bool             `json:"BU"`
+	NeedRestall bool             `json:"RESTALL"`
 }
 
 type TimeFormat struct {
