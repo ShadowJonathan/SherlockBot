@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -146,6 +148,22 @@ func GetGLDfile(GID string) (*GuildInfo, error) {
 	return LLG, nil
 }
 
+func intToString(I int) string {
+	return strconv.FormatInt(int64(I), 10)
+}
+
+func GetNotifiers() ([]string, error) {
+	DATA, err := ioutil.ReadFile("Notifiers")
+	if DATA == nil {
+		ioutil.WriteFile("Notifiers", DATA, 0777)
+		var S []string
+		fmt.Println("No notifier file found, creating sample file...")
+		return S, err
+	}
+	TotalString := string(DATA)
+	return strings.Split(TotalString, "+"), nil
+}
+
 func WriteGLDfile(G *GuildInfo, Isb bool) error {
 	if G.g == nil {
 		panic(G.g)
@@ -165,7 +183,7 @@ func WriteGLDfile(G *GuildInfo, Isb bool) error {
 				panic(err)
 			}
 			T := GetTimeForm()
-			ioutil.WriteFile(G.g.ID+"/"+string(T.Year)+"."+T.Month.String()+"."+string(T.Day)+"-"+string(T.Hour)+"."+string(T.Min)+"."+string(T.Sec)+".GLD", GU, 0777)
+			ioutil.WriteFile(G.g.ID+"/"+intToString(T.Year)+"."+T.Month.String()+"."+intToString(T.Day)+"-"+intToString(T.Hour)+"."+intToString(T.Min)+".GLD", GU, 0777)
 			if err != nil {
 				fmt.Println(err)
 				panic(err)

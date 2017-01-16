@@ -53,14 +53,13 @@ type MemberChange struct {
 
 type FullChangeStruct struct {
 	Guild struct {
-		Name        bool
-		OwnerID     bool
-		Icon        bool
-		Membercount bool
-		Region      bool
-		channels    bool
-		roles       bool
-		members     bool
+		Name     bool
+		OwnerID  bool
+		Icon     bool
+		Region   bool
+		channels bool
+		roles    bool
+		members  bool
 	}
 	Channels []*ChannelChange
 	Roles    []*RoleChange

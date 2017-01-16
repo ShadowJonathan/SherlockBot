@@ -38,7 +38,6 @@ var notifiers []string
 
 func CheckChange(G *GuildInfo, GID string) (bool, *discordgo.Guild, *FullChangeStruct) {
 	ChGl, err := GetGuild(GID)
-	fmt.Println("G-C-L: " + strconv.FormatInt(int64(len(ChGl.Channels)), 10) + ":" + strconv.FormatInt(int64(len(G.g.Channels)), 10))
 	if err != nil {
 		fmt.Println("Error getting guild: " + err.Error())
 	}
@@ -74,7 +73,6 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 		ChangeString = append(ChangeString, "Server "+Gold.Name+" changed it's region!\nPreviously: "+Gold.Region+"\nNow: "+Gnew.Region)
 	}
 	if TotC.Guild.channels {
-		fmt.Println("Channel change")
 		for _, CCh := range TotC.Channels {
 			if !CCh.ExistCrisis {
 				Cold := GetChannel(CCh.ID, Gold)
@@ -145,7 +143,6 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 		}
 	}
 	if TotC.Guild.roles {
-		fmt.Println("Role change")
 		for _, Rch := range TotC.Roles {
 			if !Rch.ExistCrisis {
 				Ro := GetRole(Rch.ID, Gold)
@@ -175,9 +172,7 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 		}
 	}
 	if TotC.Guild.members {
-		fmt.Println("Member change")
 		for _, Mch := range TotC.Members {
-			fmt.Println("Member confirm")
 			if !Mch.ExistCrisis {
 				Mold := GetMember(Mch.User.ID, Gold)
 				Mnew := GetMember(Mch.User.ID, Gnew)
@@ -194,32 +189,42 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 					if Mch.RoleNew {
 						var isOld bool
 						for _, Rn := range Mnew.Roles {
-							for _, Ro := range Mold.Roles {
-								if Rn == Ro {
-									isOld = true
-								} else {
-									isOld = false
+							if len(Mold.Roles) != 0 {
+								for _, Ro := range Mold.Roles {
+									if Rn == Ro {
+										isOld = true
+									} else {
+										isOld = false
+									}
+									if !isOld {
+										NR := GetRole(Rn, Gnew)
+										ChangeString = append(ChangeString, "Member "+Mnew.User.Username+" got the "+NR.Name+" role!")
+									}
 								}
-								if !isOld {
-									NR := GetRole(Rn, Gnew)
-									ChangeString = append(ChangeString, "Member "+Mnew.User.Username+" got the "+NR.Name+" role!")
-								}
+							} else {
+								NR := GetRole(Rn, Gnew)
+								ChangeString = append(ChangeString, "Member "+Mnew.User.Username+" got the "+NR.Name+" role!")
 							}
 						}
 					}
 					if Mch.RoleRem {
 						var IsThere bool
 						for _, Ro := range Mold.Roles {
-							for _, Rn := range Mnew.Roles {
-								if Rn == Ro {
-									IsThere = true
-								} else {
-									IsThere = false
+							if len(Mnew.Roles) != 0 {
+								for _, Rn := range Mnew.Roles {
+									if Rn == Ro {
+										IsThere = true
+									} else {
+										IsThere = false
+									}
+									if !IsThere {
+										OR := GetRole(Ro, Gold)
+										ChangeString = append(ChangeString, "Member "+Mnew.User.Username+" doesnt have the "+OR.Name+" role anymore!")
+									}
 								}
-								if !IsThere {
-									OR := GetRole(Ro, Gold)
-									ChangeString = append(ChangeString, "Member "+Mnew.User.Username+" doesnt have the "+OR.Name+" role anymore!")
-								}
+							} else {
+								OR := GetRole(Ro, Gold)
+								ChangeString = append(ChangeString, "Member "+Mnew.User.Username+" doesnt have the "+OR.Name+" role anymore!")
 							}
 						}
 					}
@@ -248,7 +253,7 @@ func StartCheckLoop() {
 
 func CheckLoop(Gid string, LastCheck *LastChangeStatus) {
 	for sh.StopLoop == false {
-		time.Sleep(10 * time.Second)
+		time.Sleep(45 * time.Second)
 		GI, err := GetGLDfile(LastCheck.GI.g.ID)
 		fmt.Println("Loop debug")
 		if err != nil {
@@ -257,7 +262,6 @@ func CheckLoop(Gid string, LastCheck *LastChangeStatus) {
 		LastCheck.GI = GI
 		IsEqual, NewGuild, AllChange := CheckChange(LastCheck.GI, Gid)
 		if !IsEqual {
-			fmt.Println("Change detect debug")
 			_, _, _, H, Mi, S := GetTime()
 			h := strconv.FormatInt(int64(H), 10)
 			mi := strconv.FormatInt(int64(Mi), 10)
@@ -307,12 +311,6 @@ func ResumeCheck(Gid string) *LastChangeStatus {
 		sh.dg.ChannelMessageSend(N, "Sherlock's out of 221b, ready for some investigation!")
 	}
 	if !IsEqual {
-		if LastCheck.GI.g == nil {
-			panic(LastCheck.GI.g)
-		}
-		if NewGuild == nil {
-			panic(NewGuild)
-		}
 		Responses := AppendChange(LastCheck.GI.g, NewGuild, AllChange)
 		if len(Responses) == 0 {
 			panic(Responses)
@@ -431,9 +429,11 @@ func Initialize(Token string) {
 	sh.dg.AddHandler(BBCreateMessage)
 
 	fmt.Println("SH: Handlers installed")
-
-	notifiers = append(notifiers, "269441095862190082")
-
+	// "269441095862190082", "270639478379511809"
+	notifiers, err = GetNotifiers()
+	if err != nil {
+		fmt.Println("Error getting Notifier file: " + err.Error())
+	}
 	err = sh.dg.Open()
 	if err == nil {
 		fmt.Println("Discord: Connection established")

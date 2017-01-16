@@ -1,6 +1,7 @@
 package Belt
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
 )
@@ -55,6 +56,7 @@ func NoteORDelete(a *discordgo.Channel, b *discordgo.Channel, ChChange *ChannelC
 			AllOR := ChChange.Perms
 			AllOR = append(AllOR, DelOR)
 			ChChange.Perms = AllOR
+			DelOR = &PermORChange{}
 		}
 	}
 	return ChChange
@@ -80,6 +82,7 @@ func NoteORCreate(a *discordgo.Channel, b *discordgo.Channel, ChChange *ChannelC
 			AllOR := ChChange.Perms
 			AllOR = append(AllOR, CreateOR)
 			ChChange.Perms = AllOR
+			CreateOR = &PermORChange{}
 		}
 	}
 	return ChChange
@@ -117,9 +120,11 @@ func CompareChannelstruct(a *discordgo.Channel, b *discordgo.Channel, ToTC *Full
 		ChChange.ID = a.ID
 		ChChange = NoteORCreate(a, b, ChChange)
 	}
-	AllCh := TotC.Channels
-	AllCh = append(AllCh, ChChange)
-	TotC.Channels = AllCh
+	if ChChange.ID != "" {
+		AllCh := TotC.Channels
+		AllCh = append(AllCh, ChChange)
+		TotC.Channels = AllCh
+	}
 	return Equal, TotC
 }
 
@@ -144,6 +149,7 @@ func NoteChannelDelete(a []*discordgo.Channel, b []*discordgo.Channel, TotC *Ful
 			AllCh := TotC.Channels
 			AllCh = append(AllCh, DelCh)
 			TotC.Channels = AllCh
+			DelCh = &ChannelChange{}
 			fmt.Println("Channel deleted")
 		}
 	}
@@ -159,21 +165,17 @@ func NoteChannelCreate(a []*discordgo.Channel, b []*discordgo.Channel, TotC *Ful
 			if ChA.ID == ChB.ID {
 				IsOld = true
 				_, TotC = CompareChannelstruct(ChA, ChB, TotC, false)
-			} else {
-				IsOld = false
 			}
 		}
 		if !IsOld {
 			NewCh.ID = ChB.ID
 			NewCh.ExistCrisis = true
 			NewCh.Mk = true
-			if len(TotC.Channels) == 0 {
-				TotC.Channels[0] = NewCh
-			} else {
-				AllCh := TotC.Channels
-				AllCh = append(AllCh, NewCh)
-				TotC.Channels = AllCh
-			}
+			AllCh := TotC.Channels
+			AllCh = append(AllCh, NewCh)
+			TotC.Channels = AllCh
+			NewCh = &ChannelChange{}
+
 		}
 	}
 	return TotC
@@ -243,9 +245,11 @@ func CompareMemberstruct(a *discordgo.Member, b *discordgo.Member, TotC *FullCha
 		MemCh.Roles = true
 		MemCh.RoleNew = true
 	}
-	AllM := TotC.Members
-	AllM = append(AllM, MemCh)
-	TotC.Members = AllM
+	if MemCh.User.ID != "" {
+		AllM := TotC.Members
+		AllM = append(AllM, MemCh)
+		TotC.Members = AllM
+	}
 	return Equal, TotC
 }
 
@@ -258,8 +262,6 @@ func NoteMemberLeave(a []*discordgo.Member, b []*discordgo.Member, TotC *FullCha
 			if ChA.User.ID == ChB.User.ID {
 				IsStillThere = true
 				_, TotC = CompareMemberstruct(ChA, ChB, TotC, false)
-			} else {
-				IsStillThere = false
 			}
 		}
 		if !IsStillThere {
@@ -269,6 +271,7 @@ func NoteMemberLeave(a []*discordgo.Member, b []*discordgo.Member, TotC *FullCha
 			AllM := TotC.Members
 			AllM = append(AllM, LeaveMem)
 			TotC.Members = AllM
+			LeaveMem = &MemberChange{}
 		}
 	}
 	return TotC
@@ -283,8 +286,6 @@ func NoteMemberJoin(a []*discordgo.Member, b []*discordgo.Member, TotC *FullChan
 			if ChA.User.ID == ChB.User.ID {
 				IsOld = true
 				_, TotC = CompareMemberstruct(ChA, ChB, TotC, false)
-			} else {
-				IsOld = false
 			}
 		}
 		if !IsOld {
@@ -294,6 +295,7 @@ func NoteMemberJoin(a []*discordgo.Member, b []*discordgo.Member, TotC *FullChan
 			AllM := TotC.Members
 			AllM = append(AllM, NewM)
 			TotC.Members = AllM
+			NewM = &MemberChange{}
 		}
 	}
 	return TotC
@@ -361,17 +363,16 @@ func NoteRoleRemove(a []*discordgo.Role, b []*discordgo.Role, TotC *FullChangeSt
 			if ChA.ID == ChB.ID {
 				IsStillThere = true
 				_, TotC = CompareRolestruct(ChA, ChB, TotC, false)
-			} else {
-				IsStillThere = false
 			}
 		}
-		if !IsStillThere {
+		if !IsStillThere || len(b) == 0 {
 			DelR.ID = ChA.ID
 			DelR.ExistCrisis = true
 			DelR.Del = true
 			AllR := TotC.Roles
 			AllR = append(AllR, DelR)
 			TotC.Roles = AllR
+			DelR = &RoleChange{}
 		}
 	}
 	return TotC
@@ -386,17 +387,16 @@ func NoteRoleCreate(a []*discordgo.Role, b []*discordgo.Role, TotC *FullChangeSt
 			if ChA.ID == ChB.ID {
 				IsOld = true
 				_, TotC = CompareRolestruct(ChA, ChB, TotC, false)
-			} else {
-				IsOld = false
 			}
 		}
-		if !IsOld {
+		if !IsOld || len(a) == 0 {
 			NewR.ID = ChB.ID
 			NewR.ExistCrisis = true
 			NewR.Mk = true
 			AllR := TotC.Roles
 			AllR = append(AllR, NewR)
 			TotC.Roles = AllR
+			NewR = &RoleChange{}
 		}
 	}
 	return TotC
@@ -426,6 +426,7 @@ func CompareRoles(a []*discordgo.Role, b []*discordgo.Role, TotC *FullChangeStru
 }
 
 func CompareGuild(a *discordgo.Guild, b *discordgo.Guild, TotC *FullChangeStruct, Equal bool) (bool, *FullChangeStruct) {
+	fmt.Println(Equal)
 	if a.Name != b.Name {
 		Equal = false
 		TotC.Guild.Name = true
@@ -438,10 +439,6 @@ func CompareGuild(a *discordgo.Guild, b *discordgo.Guild, TotC *FullChangeStruct
 		Equal = false
 		TotC.Guild.Icon = true
 	}
-	if a.MemberCount != b.MemberCount {
-		Equal = false
-		TotC.Guild.Membercount = true
-	}
 	if a.Region != b.Region {
 		Equal = false
 		TotC.Guild.Region = true
@@ -449,5 +446,9 @@ func CompareGuild(a *discordgo.Guild, b *discordgo.Guild, TotC *FullChangeStruct
 	Equal, TotC = CompareChannels(a.Channels, b.Channels, TotC, Equal)
 	Equal, TotC = CompareMembers(a.Members, b.Members, TotC, Equal)
 	Equal, TotC = CompareRoles(a.Roles, b.Roles, TotC, Equal)
+	fmt.Println("Debug change data:")
+	line, _ := json.Marshal(TotC)
+	fmt.Println(string(line))
+	fmt.Println(Equal)
 	return Equal, TotC
 }
