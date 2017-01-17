@@ -116,6 +116,26 @@ func GetGuild(Gid string) (*discordgo.Guild, error) {
 	return sh.dg.State.Guild(Gid)
 }
 
+func getCMD(CMD string) []string {
+	CMDS := strings.Split(CMD, " ")
+	return CMDS
+}
+
+func SendMessage(Channel string, Message string, Priviledged []string) bool {
+	var ok bool
+	ok = false
+	for _, AN := range Priviledged {
+		if AN == Channel {
+			ok = true
+		}
+	}
+	if !ok {
+		return false
+	}
+	sh.dg.ChannelMessageSend(Channel, Message)
+	return true
+}
+
 func GetGLDfile(GID string) (*GuildInfo, error) {
 	DATA, err := ioutil.ReadFile(GID + ".GLD")
 	var LLG = &GuildInfo{}

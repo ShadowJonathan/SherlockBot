@@ -16,14 +16,15 @@ type Version struct {
 }
 
 type Sherlock struct {
-	dg       *discordgo.Session
-	Debug    bool
-	version  Version
-	OwnID    string
-	OwnAV    string
-	OwnName  string
-	Stop     bool
-	StopLoop bool
+	dg        *discordgo.Session
+	Debug     bool
+	version   Version
+	OwnID     string
+	OwnAV     string
+	OwnName   string
+	Stop      bool
+	StopLoop  bool
+	Notifiers []string
 }
 
 // Vars after this
@@ -269,9 +270,9 @@ func CheckLoop(Gid string, LastCheck *LastChangeStatus) {
 
 			Responses := AppendChange(LastCheck.GI.g, NewGuild, AllChange)
 			for _, N := range notifiers {
-				sh.dg.ChannelMessageSend(N, "-"+h+":"+mi+";"+s+"-")
+				SendMessage(N, "-"+h+":"+mi+";"+s+"-", sh.Notifiers)
 				for _, R := range Responses {
-					sh.dg.ChannelMessageSend(N, R)
+					SendMessage(N, R, sh.Notifiers)
 				}
 			}
 		}
@@ -308,7 +309,7 @@ func ResumeCheck(Gid string) *LastChangeStatus {
 	}
 	IsEqual, NewGuild, AllChange := CheckChange(G, Gid)
 	for _, N := range notifiers {
-		sh.dg.ChannelMessageSend(N, "Sherlock's out of 221b, ready for some investigation!")
+		SendMessage(N, "Sherlock's out of 221b, ready for some investigation!", sh.Notifiers)
 	}
 	if !IsEqual {
 		Responses := AppendChange(LastCheck.GI.g, NewGuild, AllChange)
@@ -316,9 +317,9 @@ func ResumeCheck(Gid string) *LastChangeStatus {
 			panic(Responses)
 		}
 		for _, N := range notifiers {
-			sh.dg.ChannelMessageSend(N, "New Changes in since last taxi ride:")
+			SendMessage(N, "New Changes in since last taxi ride:", sh.Notifiers)
 			for _, R := range Responses {
-				sh.dg.ChannelMessageSend(N, R)
+				SendMessage(N, R, sh.Notifiers)
 			}
 		}
 	}
@@ -370,34 +371,39 @@ func BBCreateMessage(Ses *discordgo.Session, MesC *discordgo.MessageCreate) {
 	Mes := MesC.Message
 	if Mes.Content != "" {
 		if Mes.Content[0] == '!' {
-			ProcessCMD(Mes.Content[1:], Mes)
+			ProcessCMD(Mes.Content[1:], MesC.Message, sh.Notifiers)
 		}
 	}
 }
 
 // misc funx
 
-func ProcessCMD(CMD string, M *discordgo.Message) {
-	if strings.Contains(CMD, "PrimeGuild") {
-		PID := CMD[11:]
-		data := []byte(PID)
-		ioutil.WriteFile("PrimeGuild", data, 9000)
-		fmt.Println("Set new Prime Guild to '" + PID + "'")
-		sh.dg.ChannelMessageSend(M.ChannelID, "`Set new prime guild to "+PID+"`")
+func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
+	Commands := getCMD(CMD)
+	if strings.ToLower(Commands[0]) == "primeguild" {
+		PID := Commands[1]
+		if PID == "" {
+			SendMessage(M.ChannelID, "You gave me a nil ID!", Notifiers)
+		} else {
+			data := []byte(PID)
+			ioutil.WriteFile("PrimeGuild", data, 9000)
+			fmt.Println("Set new Prime Guild to '" + PID + "'")
+			SendMessage(M.ChannelID, "`Set new prime guild to "+PID+"`", sh.Notifiers)
+		}
 	}
-	if strings.Contains(CMD, "StopCheck") {
+	if strings.ToLower(Commands[0]) == "stopcheck" {
 		if !sh.StopLoop {
 			sh.StopLoop = true
 			fmt.Println("Checking loop stopped")
-			sh.dg.ChannelMessageSend(M.ChannelID, "`Stopped checking loop`")
+			SendMessage(M.ChannelID, "`Stopped checking loop`", sh.Notifiers)
 		}
 		if sh.StopLoop {
-			sh.dg.ChannelMessageSend(M.ChannelID, "`Checking loop isn't running!`")
+			SendMessage(M.ChannelID, "`Checking loop isn't running!`", sh.Notifiers)
 		}
 	}
-	if strings.Contains(CMD, "KickStart") {
+	if strings.ToLower(Commands[0]) == "kickstart" {
 		StartCheckLoop()
-		sh.dg.ChannelMessageSend(M.ChannelID, "`Checking loop restarted`")
+		SendMessage(M.ChannelID, "`Checking loop restarted`", sh.Notifiers)
 	}
 
 }
@@ -433,6 +439,8 @@ func Initialize(Token string) {
 	notifiers, err = GetNotifiers()
 	if err != nil {
 		fmt.Println("Error getting Notifier file: " + err.Error())
+	} else {
+		sh.Notifiers = notifiers
 	}
 	err = sh.dg.Open()
 	if err == nil {
