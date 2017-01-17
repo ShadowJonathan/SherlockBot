@@ -234,7 +234,7 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 				}
 				if Mch.Leave {
 					OM := GetUser(Mch.User.ID, Gold)
-					ChangeString = append(ChangeString, "Member "+OM.Username+" has left "+)
+					ChangeString = append(ChangeString, "Member "+OM.Username+" has left "+Gnew.Name+"!")
 				}
 			}
 		}
