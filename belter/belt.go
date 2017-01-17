@@ -190,16 +190,15 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 						var isOld bool
 						for _, Rn := range Mnew.Roles {
 							if len(Mold.Roles) != 0 {
+								isOld = false
 								for _, Ro := range Mold.Roles {
 									if Rn == Ro {
 										isOld = true
-									} else {
-										isOld = false
 									}
-									if !isOld {
-										NR := GetRole(Rn, Gnew)
-										ChangeString = append(ChangeString, "Member "+Mnew.User.Username+" got the "+NR.Name+" role!")
-									}
+								}
+								if !isOld {
+									NR := GetRole(Rn, Gnew)
+									ChangeString = append(ChangeString, "Member "+Mnew.User.Username+" got the "+NR.Name+" role!")
 								}
 							} else {
 								NR := GetRole(Rn, Gnew)
@@ -211,16 +210,15 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 						var IsThere bool
 						for _, Ro := range Mold.Roles {
 							if len(Mnew.Roles) != 0 {
+								IsThere = false
 								for _, Rn := range Mnew.Roles {
 									if Rn == Ro {
 										IsThere = true
-									} else {
-										IsThere = false
 									}
-									if !IsThere {
-										OR := GetRole(Ro, Gold)
-										ChangeString = append(ChangeString, "Member "+Mnew.User.Username+" doesnt have the "+OR.Name+" role anymore!")
-									}
+								}
+								if !IsThere {
+									OR := GetRole(Ro, Gold)
+									ChangeString = append(ChangeString, "Member "+Mnew.User.Username+" doesnt have the "+OR.Name+" role anymore!")
 								}
 							} else {
 								OR := GetRole(Ro, Gold)
