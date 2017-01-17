@@ -227,6 +227,15 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 						}
 					}
 				}
+			} else {
+				if Mch.Join {
+					NM := GetUser(Mch.User.ID, Gnew)
+					ChangeString = append(ChangeString, "Member "+NM.Username+" has joined "+Gnew.Name+"!")
+				}
+				if Mch.Leave {
+					OM := GetUser(Mch.User.ID, Gold)
+					ChangeString = append(ChangeString, "Member "+OM.Username+" has left "+)
+				}
 			}
 		}
 	}
