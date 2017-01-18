@@ -405,6 +405,24 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 		StartCheckLoop()
 		SendMessage(M.ChannelID, "`Checking loop restarted`", sh.Notifiers)
 	}
+	if strings.ToLower(Commands[0]) == "getuser" {
+		PG, err := ioutil.ReadFile("PrimeGuild")
+		if err != nil {
+			fmt.Println("Error reading PG file: " + err.Error())
+			return
+		}
+		GG, err := GetGuild(string(PG))
+		if err != nil {
+			panic(PG)
+		}
+		User := GetMember(Commands[1], GG)
+		var Roles []string
+		for _, R := range User.Roles {
+			var Role = GetRole(R, GG)
+			Roles = append(Roles, Role.Name)
+		}
+		SendMessage(M.ChannelID, "`User:`\n`ID: "+User.User.ID+"`\n`Username: "+User.User.Username+"#"+User.User.Discriminator+`\n`+"Nickname: "+User.Nick+"`\n`Bot: "+strconv.FormatBool(User.User.Bot)+"`\n`Roles: "+strings.Join(Roles, ", ")+"`\n`Avatar: `"+discordgo.EndpointUserAvatar(User.User.ID, User.User.Avatar), sh.Notifiers)
+	}
 
 }
 
