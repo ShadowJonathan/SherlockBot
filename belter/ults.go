@@ -121,6 +121,49 @@ func getCMD(CMD string) []string {
 	return CMDS
 }
 
+func GMstring(Commands []string) string {
+	PG, err := ioutil.ReadFile("PrimeGuild")
+	if err != nil {
+		fmt.Println("Error reading PG file: " + err.Error())
+		return ""
+	}
+	GG, err := GetGuild(string(PG))
+	if err != nil {
+		panic(PG)
+	}
+	if len(Commands) < 1 {
+		return ""
+	}
+	User := GetMember(Commands[1], GG)
+	var Roles []string
+	for _, R := range User.Roles {
+		var Role = GetRole(R, GG)
+		Roles = append(Roles, Role.Name)
+	}
+	return "`User:`\n`ID: " + User.User.ID + "`\n`Username: " + User.User.Username + "#" + User.User.Discriminator + "`\n`Nickname: " + User.Nick + "`\n`Bot: " + strconv.FormatBool(User.User.Bot) + "`\n`Roles: " + strings.Join(Roles, ", ") + "`\n`Avatar: `" + discordgo.EndpointUserAvatar(User.User.ID, User.User.Avatar)
+}
+
+func GCstring(Commands []string) string {
+	PG, err := ioutil.ReadFile("PrimeGuild")
+	if err != nil {
+		fmt.Println("Error reading PG file: " + err.Error())
+		return ""
+	}
+	GG, err := GetGuild(string(PG))
+	if err != nil {
+		panic(PG)
+	}
+	if len(Commands) < 1 {
+		return ""
+	}
+	CH := GetChannel(Commands[1], GG)
+	if strings.ToLower(CH.Type) == "voice" {
+		return "`Channel:`\n`ID: " + CH.ID + "`\n`Name: " + CH.Name + "`\n`Type: " + CH.Type + "`"
+	} else {
+		return "`Channel:`\n`ID: " + CH.ID + "`\n`Name: " + CH.Name + "`\n`Topic: " + CH.Topic + "`\n`Type: " + CH.Type + "`"
+	}
+}
+
 func SendMessage(Channel string, Message string, Priviledged []string) bool {
 	var ok bool
 	ok = false

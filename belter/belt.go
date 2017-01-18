@@ -413,24 +413,40 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 		SendMessage(M.ChannelID, "`Checking loop restarted`", sh.Notifiers)
 	}
 	if strings.ToLower(Commands[0]) == "getuser" {
+		SendMessage(M.ChannelID, GMstring(Commands), sh.Notifiers)
+	}
+	if strings.ToLower(Commands[0]) == "getchannel" {
+		SendMessage(M.ChannelID, GCstring(Commands), sh.Notifiers)
+	}
+	if strings.ToLower(Commands[0]) == "getguild" {
 		PG, err := ioutil.ReadFile("PrimeGuild")
 		if err != nil {
 			fmt.Println("Error reading PG file: " + err.Error())
 			return
 		}
 		GG, err := GetGuild(string(PG))
+		var Channels []string
+		for _, Ch := range GG.Channels {
+			var Commands []string
+			Commands[1] = Ch.ID
+			Channels = append(Channels, GCstring(Commands))
+		}
+		SendChannel, err := sh.dg.UserChannelCreate(M.Author.ID)
 		if err != nil {
-			panic(PG)
+			return
 		}
-		User := GetMember(Commands[1], GG)
-		var Roles []string
-		for _, R := range User.Roles {
-			var Role = GetRole(R, GG)
-			Roles = append(Roles, Role.Name)
+		var not []string
+		not = append(not, SendChannel.ID)
+		Owner := GetUser(GG.OwnerID, GG)
+		var own []string
+		own = append(own, Owner.ID)
+		SendMessage(SendChannel.ID, "`Guild:`\n`ID: "+GG.ID+"`\n`Name: "+GG.Name+"`\n`Region: "+GG.Region+"`\n`Icon: `"+discordgo.EndpointGuildIcon(GG.ID, GG.Icon), not)
+		SendMessage(SendChannel.ID, "`Owner`\n"+GMstring(own), not)
+		SendMessage(SendChannel.ID, "`Channels:`", not)
+		for _, CHS := range Channels {
+			SendMessage(SendChannel.ID, CHS, not)
 		}
-		SendMessage(M.ChannelID, "`User:`\n`ID: "+User.User.ID+"`\n`Username: "+User.User.Username+"#"+User.User.Discriminator+`\n`+"Nickname: "+User.Nick+"`\n`Bot: "+strconv.FormatBool(User.User.Bot)+"`\n`Roles: "+strings.Join(Roles, ", ")+"`\n`Avatar: `"+discordgo.EndpointUserAvatar(User.User.ID, User.User.Avatar), sh.Notifiers)
 	}
-
 }
 
 func DeepEqual(a *discordgo.Guild, b *discordgo.Guild) (bool, *FullChangeStruct) {
