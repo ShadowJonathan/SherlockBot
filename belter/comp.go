@@ -31,6 +31,7 @@ func CompareORRoles(a *discordgo.Channel, b *discordgo.Channel, ChChange *Channe
 					Perms = append(Perms, ChPerm)
 					ChChange.ID = a.ID
 					ChChange.Perms = Perms
+					ChChange.perms = true
 				}
 			}
 		}
@@ -56,6 +57,7 @@ func NoteORDelete(a *discordgo.Channel, b *discordgo.Channel, ChChange *ChannelC
 			AllOR := ChChange.Perms
 			AllOR = append(AllOR, DelOR)
 			ChChange.Perms = AllOR
+			ChChange.perms = true
 			DelOR = &PermORChange{}
 		}
 	}
@@ -82,6 +84,7 @@ func NoteORCreate(a *discordgo.Channel, b *discordgo.Channel, ChChange *ChannelC
 			AllOR := ChChange.Perms
 			AllOR = append(AllOR, CreateOR)
 			ChChange.Perms = AllOR
+			ChChange.perms = true
 			CreateOR = &PermORChange{}
 		}
 	}

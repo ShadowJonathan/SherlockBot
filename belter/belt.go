@@ -93,19 +93,19 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 								Ror := GetRole(P.ID, Gold)
 
 								if P.Allow {
-									ChangeString = append(ChangeString, "Channel "+Cold.Name+" has changed it's allowed overwrite-permissions for the "+Ror.Name+" role changed from `"+strconv.FormatInt(int64(Oor.Allow), 10)+"` to `"+strconv.FormatInt(int64(Nor.Allow), 10)+"`")
+									ChangeString = append(ChangeString, "Channel "+Cnew.Name+" has changed it's allowed overwrite-permissions for the "+Ror.Name+" role changed from `"+intToString(Oor.Allow)+"` to `"+intToString(Nor.Allow)+"`")
 								}
 								if P.Deny {
-									ChangeString = append(ChangeString, "Channel "+Cold.Name+" has changed it's denied overwrite-permissions for the "+Ror.Name+" role changed from `"+strconv.FormatInt(int64(Oor.Deny), 10)+"` to `"+strconv.FormatInt(int64(Nor.Deny), 10)+"`")
+									ChangeString = append(ChangeString, "Channel "+Cnew.Name+" has changed it's denied overwrite-permissions for the "+Ror.Name+" role changed from `"+intToString(Oor.Deny)+"` to `"+intToString(Nor.Deny)+"`")
 								}
 							} else {
 								Mor := GetUser(P.ID, Gold)
 
 								if P.Allow {
-									ChangeString = append(ChangeString, "Channel "+Cold.Name+" has changed it's allowed overwrite-permissions for "+Mor.Username+" changed from `"+strconv.FormatInt(int64(Oor.Allow), 10)+"` to `"+strconv.FormatInt(int64(Nor.Allow), 10)+"`")
+									ChangeString = append(ChangeString, "Channel "+Cnew.Name+" has changed it's allowed overwrite-permissions for "+Mor.Username+" changed from `"+intToString(Oor.Allow)+"` to `"+intToString(Nor.Allow)+"`")
 								}
 								if P.Deny {
-									ChangeString = append(ChangeString, "Channel "+Cold.Name+" has changed it's denied overwrite-permissions for "+Mor.Username+" changed from `"+strconv.FormatInt(int64(Oor.Deny), 10)+"` to `"+strconv.FormatInt(int64(Nor.Deny), 10)+"`")
+									ChangeString = append(ChangeString, "Channel "+Cnew.Name+" has changed it's denied overwrite-permissions for "+Mor.Username+" changed from `"+intToString(Oor.Deny)+"` to `"+intToString(Nor.Deny)+"`")
 								}
 							}
 						} else {
