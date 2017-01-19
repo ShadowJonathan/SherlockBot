@@ -425,6 +425,9 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 			return
 		}
 		GG, err := GetGuild(string(PG))
+		if len(Commands) < 1 {
+			Commands[1] = GG.ID
+		}
 		var Channels []string
 		for _, Ch := range GG.Channels {
 			var Commands []string
