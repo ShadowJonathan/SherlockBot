@@ -387,6 +387,10 @@ func BBCreateMessage(Ses *discordgo.Session, MesC *discordgo.MessageCreate) {
 
 func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 	Commands := getCMD(CMD)
+	var SecArg string
+	if Commands[1] != nil {
+		SecArg = Commands[1]
+	}
 	if strings.ToLower(Commands[0]) == "primeguild" {
 		PID := Commands[1]
 		if PID == "" {
@@ -413,10 +417,10 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 		SendMessage(M.ChannelID, "`Checking loop restarted`", sh.Notifiers)
 	}
 	if strings.ToLower(Commands[0]) == "getuser" {
-		SendMessage(M.ChannelID, GMstring(Commands), sh.Notifiers)
+		SendMessage(M.ChannelID, GMstring(SecArg), sh.Notifiers)
 	}
 	if strings.ToLower(Commands[0]) == "getchannel" {
-		SendMessage(M.ChannelID, GCstring(Commands), sh.Notifiers)
+		SendMessage(M.ChannelID, GCstring(SecArg), sh.Notifiers)
 	}
 	if strings.ToLower(Commands[0]) == "getguild" {
 		PG, err := ioutil.ReadFile("PrimeGuild")
@@ -430,8 +434,8 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 		}
 		var Channels []string
 		for _, Ch := range GG.Channels {
-			Commands[1] = Ch.ID
-			Channels = append(Channels, GCstring(Commands))
+			CMDS[1] = Ch.ID
+			Channels = append(Channels, GCstring(Commands[1]))
 		}
 		SendChannel, err := sh.dg.UserChannelCreate(M.Author.ID)
 		if err != nil {
