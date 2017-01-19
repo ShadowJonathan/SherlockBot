@@ -387,19 +387,18 @@ func BBCreateMessage(Ses *discordgo.Session, MesC *discordgo.MessageCreate) {
 
 func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 	Commands := getCMD(CMD)
-	var SecArg string
+	var SecArg string = ""
 	if len(Commands) > 1 {
 		SecArg = Commands[1]
 	}
 	if strings.ToLower(Commands[0]) == "primeguild" {
-		PID := Commands[1]
-		if PID == "" {
+		if SecArg == "" {
 			SendMessage(M.ChannelID, "You gave me a nil ID!", Notifiers)
 		} else {
-			data := []byte(PID)
+			data := []byte(SecArg)
 			ioutil.WriteFile("PrimeGuild", data, 9000)
-			fmt.Println("Set new Prime Guild to '" + PID + "'")
-			SendMessage(M.ChannelID, "`Set new prime guild to "+PID+"`", sh.Notifiers)
+			fmt.Println("Set new Prime Guild to '" + SecArg + "'")
+			SendMessage(M.ChannelID, "`Set new prime guild to "+SecArg+"`", sh.Notifiers)
 		}
 	}
 	if strings.ToLower(Commands[0]) == "stopcheck" {

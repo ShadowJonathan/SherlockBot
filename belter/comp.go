@@ -73,8 +73,6 @@ func NoteORCreate(a *discordgo.Channel, b *discordgo.Channel, ChChange *ChannelC
 			if ORA.ID == ORB.ID {
 				IsOld = true
 				_, ChChange, _ = CompareORRoles(a, b, ChChange, false, false)
-			} else {
-				IsOld = false
 			}
 		}
 		if !IsOld {
@@ -139,10 +137,7 @@ func NoteChannelDelete(a []*discordgo.Channel, b []*discordgo.Channel, TotC *Ful
 		for _, ChB := range b {
 			if ChA.ID == ChB.ID {
 				IsStillThere = true
-				fmt.Println("Channel match")
 				_, TotC = CompareChannelstruct(ChA, ChB, TotC, false)
-			} else {
-				fmt.Println("No match")
 			}
 		}
 		if !IsStillThere {
@@ -153,7 +148,6 @@ func NoteChannelDelete(a []*discordgo.Channel, b []*discordgo.Channel, TotC *Ful
 			AllCh = append(AllCh, DelCh)
 			TotC.Channels = AllCh
 			DelCh = &ChannelChange{}
-			fmt.Println("Channel deleted")
 		}
 	}
 	return TotC
@@ -331,29 +325,37 @@ func CompareMembers(a []*discordgo.Member, b []*discordgo.Member, TotC *FullChan
 
 func CompareRolestruct(a *discordgo.Role, b *discordgo.Role, TotC *FullChangeStruct, Equal bool) (bool, *FullChangeStruct) {
 	var RoleCh = &RoleChange{}
-	RoleCh.ID = a.ID
+	var detect bool
 	if a.Name != b.Name {
 		TotC.Guild.roles = true
 		RoleCh.ID = a.ID
 		RoleCh.Name = true
+		detect = true
 	}
 	if a.Permissions != b.Permissions {
 		TotC.Guild.roles = true
 		RoleCh.ID = a.ID
 		RoleCh.Perms = true
+		detect = true
 	}
 	if a.Position != b.Position {
 		TotC.Guild.roles = true
 		RoleCh.ID = a.ID
 		RoleCh.Position = true
+		detect = true
 	}
 	if a.Color != b.Color {
 		TotC.Guild.roles = true
 		RoleCh.ID = a.ID
 		RoleCh.Color = true
+		detect = true
 	}
-	AllR := TotC.Roles
-	AllR = append(AllR, RoleCh)
+	if detect {
+		AllR := TotC.Roles
+		AllR = append(AllR, RoleCh)
+		TotC.Roles = AllR
+		Equal = false
+	}
 	return Equal, TotC
 }
 
@@ -449,9 +451,12 @@ func CompareGuild(a *discordgo.Guild, b *discordgo.Guild, TotC *FullChangeStruct
 	Equal, TotC = CompareChannels(a.Channels, b.Channels, TotC, Equal)
 	Equal, TotC = CompareMembers(a.Members, b.Members, TotC, Equal)
 	Equal, TotC = CompareRoles(a.Roles, b.Roles, TotC, Equal)
-	fmt.Println("Debug change data:")
-	line, _ := json.Marshal(TotC)
-	fmt.Println(string(line))
-	fmt.Println(Equal)
+	var empty = &FullChangeStruct{}
+	if TotC != empty {
+		fmt.Println("Debug change data:")
+		line, _ := json.Marshal(TotC)
+		fmt.Println(string(line))
+		fmt.Println(Equal)
+	}
 	return Equal, TotC
 }
