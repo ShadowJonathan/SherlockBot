@@ -388,7 +388,7 @@ func BBCreateMessage(Ses *discordgo.Session, MesC *discordgo.MessageCreate) {
 func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 	Commands := getCMD(CMD)
 	var SecArg string
-	if len(Commands) > 0 {
+	if len(Commands) > 1 {
 		SecArg = Commands[1]
 	}
 	if strings.ToLower(Commands[0]) == "primeguild" {
