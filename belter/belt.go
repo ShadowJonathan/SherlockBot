@@ -430,7 +430,6 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 		}
 		var Channels []string
 		for _, Ch := range GG.Channels {
-			var Commands []string
 			Commands[1] = Ch.ID
 			Channels = append(Channels, GCstring(Commands))
 		}
