@@ -388,7 +388,7 @@ func BBCreateMessage(Ses *discordgo.Session, MesC *discordgo.MessageCreate) {
 func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 	Commands := getCMD(CMD)
 	var SecArg string
-	if Commands[1] != nil {
+	if len(Commands) > 0 {
 		SecArg = Commands[1]
 	}
 	if strings.ToLower(Commands[0]) == "primeguild" {
@@ -434,8 +434,7 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 		}
 		var Channels []string
 		for _, Ch := range GG.Channels {
-			CMDS[1] = Ch.ID
-			Channels = append(Channels, GCstring(Commands[1]))
+			Channels = append(Channels, GCstring(Ch.ID))
 		}
 		SendChannel, err := sh.dg.UserChannelCreate(M.Author.ID)
 		if err != nil {
@@ -444,8 +443,8 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 		var not []string
 		not = append(not, SendChannel.ID)
 		Owner := GetUser(GG.OwnerID, GG)
-		var own []string
-		own = append(own, Owner.ID)
+		var own string
+		own = Owner.ID
 		SendMessage(SendChannel.ID, "`Guild:`\n`ID: "+GG.ID+"`\n`Name: "+GG.Name+"`\n`Region: "+GG.Region+"`\n`Icon: `"+discordgo.EndpointGuildIcon(GG.ID, GG.Icon), not)
 		SendMessage(SendChannel.ID, "`Owner`\n"+GMstring(own), not)
 		SendMessage(SendChannel.ID, "`Channels:`", not)
