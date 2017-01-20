@@ -94,14 +94,19 @@ type LastChangeStatus struct {
 	SiLaChBisTerm bool
 }
 
+type CompiledChange struct {
+	Old *discordgo.Guild
+	New *discordgo.Guild
+}
+
 type PrimeSuspectChange struct {
 	ID       string
 	member   bool
 	MC       PSMemberchange
 	roles    bool
-	RC       PSRolechange
+	RC       []*PSRolechange
 	channels bool
-	CC       PSchannelchange
+	CC       []*PSchannelchange
 }
 
 type PSMemberchange struct {

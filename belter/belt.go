@@ -492,27 +492,34 @@ func DeepEqual(a *discordgo.Guild, b *discordgo.Guild) (bool, *FullChangeStruct)
 	var Equal = true
 	var TotC = &FullChangeStruct{}
 	Equal, TotC, _ = CompareGuild(a, b, TotC, Equal) // replace _ -> Men
-	// HandleMention(Men) // mentioning chain
+	//var Comp = &CompiledChange{
+	//	Old: a,
+	//	New: b,
+	//}
+	//PSchanges, PSyes := HandleMention(Men, Comp) // mentioning chain
 	return Equal, TotC
 }
 
 // prime suspect dealing
 
-func HandleMention(Men *FullMention) {
+func HandleMention(Men *FullMention, biChange *CompiledChange) (*PrimeSuspectChange, bool) {
 	PS := sh.PrimeSuspects
-	PSC := Prime
+	//var PSC = &PrimeSuspectChange{}
+	//Old := biChange.Old
+	//New := biChange.New
 	for _, Ps := range PS {
-
 		for _, C := range Men.ChannelOR {
 			if C.perms {
-				for _, OR := range C.Perms {
-					if OR.ID == Ps {
+				for _, Or := range C.Perms {
+					if Or.ID == Ps {
 
 					}
 				}
 			}
 		}
 	}
+	var PSS = &PrimeSuspectChange{}
+	return PSS, false
 }
 
 // init

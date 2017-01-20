@@ -76,6 +76,15 @@ func GetRole(RID string, g *discordgo.Guild) *discordgo.Role {
 	return Defaultrole
 }
 
+func GetPG() string {
+	PG, err := ioutil.ReadFile("PrimeGuild")
+	if err != nil {
+		fmt.Println("Error reading PG file: " + err.Error())
+		return ""
+	}
+	return string(PG)
+}
+
 func AppendSSlices(BeginSlice []string, MergeSlice []string) []string {
 	var ProcessSlice = BeginSlice
 	for _, MergeString := range MergeSlice {
@@ -168,7 +177,7 @@ func GRstring(role string) (string, string) {
 	PG, err := ioutil.ReadFile("PrimeGuild")
 	if err != nil {
 		fmt.Println("Error reading PG file: " + err.Error())
-		return ""
+		return "", ""
 	}
 	GG, err := GetGuild(string(PG))
 	if err != nil {
@@ -177,7 +186,7 @@ func GRstring(role string) (string, string) {
 	Role := GetRole(role, GG)
 	var returnS string
 	var return2 string
-	returnS = "`Role:`\n`ID: " + Role.ID + "`\n`Name: " + Role.Name + "`\n`Bot Role: " + strconv.FormatBool(Role.Managed) + "`\n`Mentionable: " + strconv.FormatBool(Role.Mentionable) + "`\n`Special tab in sidebar: " + strconv.FormatBool(Role.Hoist) + "`\n`Color: " + strconv.FormatInt(int64(Role.Color), 16) + "`\n`Position (acending): " + strconv.FormatInt(Role.Position, 10) + "`\n`Permissions: " + strconv.FormatInt(Role.Permissions, 10)
+	returnS = "`Role:`\n`ID: " + Role.ID + "`\n`Name: " + Role.Name + "`\n`Bot Role: " + strconv.FormatBool(Role.Managed) + "`\n`Mentionable: " + strconv.FormatBool(Role.Mentionable) + "`\n`Special tab in sidebar: " + strconv.FormatBool(Role.Hoist) + "`\n`Color: " + strconv.FormatInt(int64(Role.Color), 16) + "`\n`Position (acending): " + strconv.FormatInt(int64(Role.Position), 10) + "`\n`Permissions: " + strconv.FormatInt(int64(Role.Permissions), 10)
 	var people []string
 	for _, P := range GG.Members {
 		for _, R := range P.Roles {
