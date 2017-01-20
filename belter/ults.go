@@ -164,6 +164,33 @@ func GCstring(Channel string) string {
 	}
 }
 
+func GRstring(role string) (string, string) {
+	PG, err := ioutil.ReadFile("PrimeGuild")
+	if err != nil {
+		fmt.Println("Error reading PG file: " + err.Error())
+		return ""
+	}
+	GG, err := GetGuild(string(PG))
+	if err != nil {
+		panic(PG)
+	}
+	Role := GetRole(role, GG)
+	var returnS string
+	var return2 string
+	returnS = "`Role:`\n`ID: " + Role.ID + "`\n`Name: " + Role.Name + "`\n`Bot Role: " + strconv.FormatBool(Role.Managed) + "`\n`Mentionable: " + strconv.FormatBool(Role.Mentionable) + "`\n`Special tab in sidebar: " + strconv.FormatBool(Role.Hoist) + "`\n`Color: " + strconv.FormatInt(int64(Role.Color), 16) + "`\n`Position (acending): " + strconv.FormatInt(Role.Position, 10) + "`\n`Permissions: " + strconv.FormatInt(Role.Permissions, 10)
+	var people []string
+	for _, P := range GG.Members {
+		for _, R := range P.Roles {
+			if R == Role.ID {
+				people = append(people, P.User.Username)
+			}
+		}
+	}
+	return2 = "`Users:`\n`" + strings.Join(people, ", ") + "`"
+	return returnS, return2
+
+}
+
 func SendMessage(Channel string, Message string, Priviledged []string) bool {
 	var ok bool
 	ok = false
@@ -295,7 +322,7 @@ func AltB10(Bit string) int {
 
 func ParsePermissions(Perm int) *Permissions { // perm in base 10
 	Perms := &Permissions{}
-	Bits := getBit(Perm)
+	Bits := getBit(uint64(Perm))
 	for b, yes := range Bits[:32] {
 		switch b {
 		case 0:
@@ -504,8 +531,28 @@ MANAGE_EMOJIS         30, //0x40000000
 
 */
 
-func getBit(data int) []bool {
+func getBit(data uint64) []bool {
 	var dataBitmap = make([]bool, 64)
+	var index uint64 = 0
+	for index < 64 {
+		dataBitmap[index] = data&(1<<index) > 0
+		index++
+	}
+	return dataBitmap
+}
+
+/*
+var dataBitmap = make([]bool, 64)
+    var index uint64 = 0
+    for index < 64 {
+        dataBitmap[index] = data & (1 << index) > 0
+        index++
+    }
+    return dataBitmap
+
+    ------
+
+    var dataBitmap = make([]bool, 64)
 	Bit := GetBit(data)
 	var index int = 0
 	for index < 64 {
@@ -522,4 +569,4 @@ func getBit(data int) []bool {
 		index++
 	}
 	return dataBitmap
-}
+*/

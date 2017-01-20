@@ -94,6 +94,72 @@ type LastChangeStatus struct {
 	SiLaChBisTerm bool
 }
 
+type PrimeSuspectChange struct {
+	ID       string
+	member   bool
+	MC       PSMemberchange
+	roles    bool
+	RC       PSRolechange
+	channels bool
+	CC       PSchannelchange
+}
+
+type PSMemberchange struct {
+	name bool // username
+	Name struct {
+		NName string
+		OName string
+	}
+	nick bool
+	Nick struct {
+		NNick string
+		OBick string
+	}
+	Owner      bool
+	Isownernow bool
+}
+type PSRolechange struct { // Role that the PS has that is changed or added
+	ID    string
+	allow bool
+	Allow struct {
+		Last string
+		New  string
+	}
+	deny bool
+	Deny struct {
+		Last string
+		New  string
+	}
+	pos         bool
+	PosOld      int
+	PosNew      int
+	Existcrisis bool
+	Deleted     bool
+	Dperm       string //permissions before the delete
+	Made        bool
+	Mper        string //permissions after the creation, ignore if 0
+}
+
+type PSchannelchange struct { // Channel with OR permission change related to the PS
+	ID    string
+	Type  string
+	allow bool
+	Allow struct {
+		Last string
+		New  string
+	}
+	deny bool
+	Deny struct {
+		Last string
+		New  string
+	}
+	Existentcrisis bool
+	Deleted        bool
+	Dperm          string //permissions before the delete
+	Made           bool
+	Mper           string //permissions after the creation, ignore if 0
+}
+
 type Permissions struct {
 	CREATE_INSTANT_INVITE bool //0x00000001	1	Allows creation of instant invites
 	KICK_MEMBERS          bool //0x00000002	10	Allows kicking members

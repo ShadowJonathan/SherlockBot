@@ -394,6 +394,10 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 	if len(Commands) > 1 {
 		SecArg = Commands[1]
 	}
+	var thirdArg string = ""
+	if len(Commands) > 2 {
+		thirdArg = Commands[2]
+	}
 	if strings.ToLower(Commands[0]) == "primeguild" {
 		if SecArg == "" {
 			SendMessage(M.ChannelID, "`You gave me a nil ID!`", Notifiers)
@@ -454,6 +458,21 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 			SendMessage(SendChannel.ID, CHS, not)
 		}
 	}
+	if strings.ToLower(Commands[0]) == "getrole" {
+		if SecArg == "" {
+			SendMessage(M.ChannelID, "`You gave me a nil role!`", sh.Notifiers)
+			return
+		}
+		data, users := GRstring(SecArg)
+		SendMessage(M.ChannelID, data, sh.Notifiers)
+		if strings.ToLower(thirdArg) == "users" {
+			if len(users) > 1999 {
+				SendMessage(M.ChannelID, "`(Cannot send users, too many)`", sh.Notifiers)
+				return
+			}
+			SendMessage(M.ChannelID, users, sh.Notifiers)
+		}
+	}
 	if strings.ToLower(Commands[0]) == "getpermissions" {
 		var perm string
 		if SecArg != "" {
@@ -480,7 +499,20 @@ func DeepEqual(a *discordgo.Guild, b *discordgo.Guild) (bool, *FullChangeStruct)
 // prime suspect dealing
 
 func HandleMention(Men *FullMention) {
-	//PS := sh.PrimeSuspects
+	PS := sh.PrimeSuspects
+	PSC := Prime
+	for _, Ps := range PS {
+
+		for _, C := range Men.ChannelOR {
+			if C.perms {
+				for _, OR := range C.Perms {
+					if OR.ID == Ps {
+
+					}
+				}
+			}
+		}
+	}
 }
 
 // init
