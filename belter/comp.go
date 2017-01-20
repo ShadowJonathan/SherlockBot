@@ -430,7 +430,7 @@ func CompareRoles(a []*discordgo.Role, b []*discordgo.Role, TotC *FullChangeStru
 	return Equal, TotC
 }
 
-func CompareGuild(a *discordgo.Guild, b *discordgo.Guild, TotC *FullChangeStruct, Equal bool) (bool, *FullChangeStruct) {
+func CompareGuild(a *discordgo.Guild, b *discordgo.Guild, TotC *FullChangeStruct, Equal bool) (bool, *FullChangeStruct, *FullMention) {
 	fmt.Println(Equal)
 	if a.Name != b.Name {
 		Equal = false
@@ -458,5 +458,11 @@ func CompareGuild(a *discordgo.Guild, b *discordgo.Guild, TotC *FullChangeStruct
 		fmt.Println(string(line))
 		fmt.Println(Equal)
 	}
-	return Equal, TotC
+	var MenT = &FullMention{
+		ChannelOR: TotC.Channels,
+		Members:   TotC.Members,
+		Roles:     TotC.Roles,
+		OwnerID:   b.OwnerID,
+	}
+	return Equal, TotC, MenT
 }

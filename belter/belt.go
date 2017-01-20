@@ -16,20 +16,23 @@ type Version struct {
 }
 
 type Sherlock struct {
-	dg        *discordgo.Session
-	Debug     bool
-	version   Version
-	OwnID     string
-	OwnAV     string
-	OwnName   string
-	Stop      bool
-	StopLoop  bool
-	Notifiers []string
+	dg            *discordgo.Session
+	Debug         bool
+	version       Version
+	OwnID         string
+	OwnAV         string
+	OwnName       string
+	Stop          bool
+	StopLoop      bool
+	Notifiers     []string
+	PrimeSuspects []string
 }
 
 // Vars after this
 
 var sh *Sherlock
+
+var PER *PermissionBit // do not change this
 
 // Functions after this
 
@@ -393,7 +396,7 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 	}
 	if strings.ToLower(Commands[0]) == "primeguild" {
 		if SecArg == "" {
-			SendMessage(M.ChannelID, "You gave me a nil ID!", Notifiers)
+			SendMessage(M.ChannelID, "`You gave me a nil ID!`", Notifiers)
 		} else {
 			data := []byte(SecArg)
 			ioutil.WriteFile("PrimeGuild", data, 9000)
@@ -451,13 +454,33 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 			SendMessage(SendChannel.ID, CHS, not)
 		}
 	}
+	if strings.ToLower(Commands[0]) == "getpermissions" {
+		var perm string
+		if SecArg != "" {
+			perm = SecArg
+		} else {
+			SendMessage(M.ChannelID, "`You gave me a nil permission number!`", sh.Notifiers)
+			return
+		}
+		PerMap := ParsePermissions(GetB10(perm))
+		Perms := GetPermissions(PerMap)
+		PerS := strings.Join(Perms, ", ")
+		SendMessage(M.ChannelID, "`Permissions for: "+SecArg+"`\n`Binary: "+GetBit(GetB10(perm))+"`\n`Perms: "+PerS+"`", sh.Notifiers)
+	}
 }
 
 func DeepEqual(a *discordgo.Guild, b *discordgo.Guild) (bool, *FullChangeStruct) {
 	var Equal = true
 	var TotC = &FullChangeStruct{}
-	Equal, TotC = CompareGuild(a, b, TotC, Equal)
+	Equal, TotC, _ = CompareGuild(a, b, TotC, Equal) // replace _ -> Men
+	// HandleMention(Men) // mentioning chain
 	return Equal, TotC
+}
+
+// prime suspect dealing
+
+func HandleMention(Men *FullMention) {
+	//PS := sh.PrimeSuspects
 }
 
 // init
@@ -480,6 +503,17 @@ func Initialize(Token string) {
 	sh.dg.AddHandler(BBCreateMessage)
 
 	fmt.Println("SH: Handlers installed")
+
+	SUS, err := GetSuspects()
+
+	installPerms()
+
+	if err == nil {
+		sh.PrimeSuspects = SUS
+	} else {
+		var sus []string
+		sh.PrimeSuspects = sus
+	}
 	// "269441095862190082", "270639478379511809"
 	notifiers, err = GetNotifiers()
 	if err != nil {
