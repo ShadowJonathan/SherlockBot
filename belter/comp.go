@@ -3,8 +3,12 @@ package Belt
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/bwmarrin/discordgo"
 )
+
+var empty string
+var emptyB []byte
 
 // overwrite
 
@@ -451,10 +455,11 @@ func CompareGuild(a *discordgo.Guild, b *discordgo.Guild, TotC *FullChangeStruct
 	Equal, TotC = CompareChannels(a.Channels, b.Channels, TotC, Equal)
 	Equal, TotC = CompareMembers(a.Members, b.Members, TotC, Equal)
 	Equal, TotC = CompareRoles(a.Roles, b.Roles, TotC, Equal)
-	var empty = &FullChangeStruct{}
-	if TotC != empty {
-		fmt.Println("Debug change data:")
-		line, _ := json.Marshal(TotC)
+	emptyB = []byte("{\"Guild\":{\"Name\":false,\"OwnerID\":false,\"Icon\":false,\"Region\":false},\"CHs\":null,\"Rs\":null,\"Ms\":null}")
+	line, _ := json.Marshal(TotC)
+	fmt.Println(GetTimeString(GetTimeForm(), false))
+	if CompByteArray(line, emptyB) {
+		fmt.Println("Change data:")
 		fmt.Println(string(line))
 		fmt.Println(Equal)
 	}

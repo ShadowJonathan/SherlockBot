@@ -329,6 +329,29 @@ func AltB10(Bit string) int {
 	return int(B10)
 }
 
+func CompByteArray(a []byte, b []byte) bool {
+	var aS = string(a)
+	var bS = string(b)
+	return aS == bS
+}
+
+func GetTimeString(T *TimeFormat, short bool) string {
+	if short {
+		h := strconv.FormatInt(int64(T.Hour), 10)
+		mi := strconv.FormatInt(int64(T.Min), 10)
+		s := strconv.FormatInt(int64(T.Sec), 10)
+		return "-" + h + ":" + mi + ";" + s + "-"
+	} else {
+		y := strconv.FormatInt(int64(T.Year), 10)
+		mo := strconv.FormatInt(int64(T.Month), 10)
+		d := strconv.FormatInt(int64(T.Day), 10)
+		h := strconv.FormatInt(int64(T.Hour), 10)
+		mi := strconv.FormatInt(int64(T.Min), 10)
+		s := strconv.FormatInt(int64(T.Sec), 10)
+		return "|" + y + "/" + mo + "/" + d + "|" + h + ":" + mi + ";" + s
+	}
+}
+
 func ParsePermissions(Perm int) *Permissions { // perm in base 10
 	Perms := &Permissions{}
 	Bits := getBit(uint64(Perm))
