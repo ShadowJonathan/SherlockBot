@@ -122,7 +122,7 @@ func AltTimeForm() TimeFormat {
 }
 
 func GetGuild(Gid string) (*discordgo.Guild, error) {
-	return sh.dg.State.Guild(Gid)
+	return sh.dg.Guild(Gid)
 }
 
 func getCMD(CMD string) []string {

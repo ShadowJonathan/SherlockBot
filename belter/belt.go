@@ -268,6 +268,7 @@ func CheckLoop(Gid string, LastCheck *LastChangeStatus) {
 		GI, err := GetGLDfile(LastCheck.GI.g.ID)
 		if err != nil {
 			fmt.Println("Error getting GLD file: " + err.Error())
+			return
 		}
 		LastCheck.GI = GI
 		IsEqual, NewGuild, AllChange := CheckChange(LastCheck.GI, Gid)
