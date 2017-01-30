@@ -455,10 +455,9 @@ func CompareGuild(a *discordgo.Guild, b *discordgo.Guild, TotC *FullChangeStruct
 	Equal, TotC = CompareChannels(a.Channels, b.Channels, TotC, Equal)
 	Equal, TotC = CompareMembers(a.Members, b.Members, TotC, Equal)
 	Equal, TotC = CompareRoles(a.Roles, b.Roles, TotC, Equal)
-	emptyB = []byte("{\"Guild\":{\"Name\":false,\"OwnerID\":false,\"Icon\":false,\"Region\":false},\"CHs\":null,\"Rs\":null,\"Ms\":null}")
 	line, _ := json.Marshal(TotC)
 	fmt.Println(GetTimeString(GetTimeForm(), false))
-	if CompByteArray(line, emptyB) {
+	if !Equal {
 		fmt.Println("Change data:")
 		fmt.Println(string(line))
 		fmt.Println(Equal)
