@@ -435,7 +435,6 @@ func CompareRoles(a []*discordgo.Role, b []*discordgo.Role, TotC *FullChangeStru
 }
 
 func CompareGuild(a *discordgo.Guild, b *discordgo.Guild, TotC *FullChangeStruct, Equal bool) (bool, *FullChangeStruct, *FullMention) {
-	fmt.Println(Equal)
 	if a.Name != b.Name {
 		Equal = false
 		TotC.Guild.Name = true

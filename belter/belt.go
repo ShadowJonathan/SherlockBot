@@ -266,7 +266,6 @@ func CheckLoop(Gid string, LastCheck *LastChangeStatus) {
 	for sh.StopLoop == false {
 		time.Sleep(45 * time.Second)
 		GI, err := GetGLDfile(LastCheck.GI.g.ID)
-		fmt.Println("Loop debug")
 		if err != nil {
 			fmt.Println("Error getting GLD file: " + err.Error())
 		}
