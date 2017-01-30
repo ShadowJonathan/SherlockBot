@@ -16,20 +16,23 @@ type Version struct {
 }
 
 type Sherlock struct {
-	dg        *discordgo.Session
-	Debug     bool
-	version   Version
-	OwnID     string
-	OwnAV     string
-	OwnName   string
-	Stop      bool
-	StopLoop  bool
-	Notifiers []string
+	dg            *discordgo.Session
+	Debug         bool
+	version       Version
+	OwnID         string
+	OwnAV         string
+	OwnName       string
+	Stop          bool
+	StopLoop      bool
+	Notifiers     []string
+	PrimeSuspects []string
 }
 
 // Vars after this
 
 var sh *Sherlock
+
+var PER *PermissionBit // do not change this
 
 // Functions after this
 
@@ -93,19 +96,19 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 								Ror := GetRole(P.ID, Gold)
 
 								if P.Allow {
-									ChangeString = append(ChangeString, "Channel "+Cold.Name+" has changed it's allowed overwrite-permissions for the "+Ror.Name+" role changed from `"+strconv.FormatInt(int64(Oor.Allow), 10)+"` to `"+strconv.FormatInt(int64(Nor.Allow), 10)+"`")
+									ChangeString = append(ChangeString, "Channel "+Cnew.Name+" has changed it's allowed overwrite-permissions for the "+Ror.Name+" role changed from `"+intToString(Oor.Allow)+"` to `"+intToString(Nor.Allow)+"`")
 								}
 								if P.Deny {
-									ChangeString = append(ChangeString, "Channel "+Cold.Name+" has changed it's denied overwrite-permissions for the "+Ror.Name+" role changed from `"+strconv.FormatInt(int64(Oor.Deny), 10)+"` to `"+strconv.FormatInt(int64(Nor.Deny), 10)+"`")
+									ChangeString = append(ChangeString, "Channel "+Cnew.Name+" has changed it's denied overwrite-permissions for the "+Ror.Name+" role changed from `"+intToString(Oor.Deny)+"` to `"+intToString(Nor.Deny)+"`")
 								}
 							} else {
 								Mor := GetUser(P.ID, Gold)
 
 								if P.Allow {
-									ChangeString = append(ChangeString, "Channel "+Cold.Name+" has changed it's allowed overwrite-permissions for "+Mor.Username+" changed from `"+strconv.FormatInt(int64(Oor.Allow), 10)+"` to `"+strconv.FormatInt(int64(Nor.Allow), 10)+"`")
+									ChangeString = append(ChangeString, "Channel "+Cnew.Name+" has changed it's allowed overwrite-permissions for "+Mor.Username+" changed from `"+intToString(Oor.Allow)+"` to `"+intToString(Nor.Allow)+"`")
 								}
 								if P.Deny {
-									ChangeString = append(ChangeString, "Channel "+Cold.Name+" has changed it's denied overwrite-permissions for "+Mor.Username+" changed from `"+strconv.FormatInt(int64(Oor.Deny), 10)+"` to `"+strconv.FormatInt(int64(Nor.Deny), 10)+"`")
+									ChangeString = append(ChangeString, "Channel "+Cnew.Name+" has changed it's denied overwrite-permissions for "+Mor.Username+" changed from `"+intToString(Oor.Deny)+"` to `"+intToString(Nor.Deny)+"`")
 								}
 							}
 						} else {
@@ -387,15 +390,22 @@ func BBCreateMessage(Ses *discordgo.Session, MesC *discordgo.MessageCreate) {
 
 func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 	Commands := getCMD(CMD)
+	var SecArg string = ""
+	if len(Commands) > 1 {
+		SecArg = Commands[1]
+	}
+	var thirdArg string = ""
+	if len(Commands) > 2 {
+		thirdArg = Commands[2]
+	}
 	if strings.ToLower(Commands[0]) == "primeguild" {
-		PID := Commands[1]
-		if PID == "" {
-			SendMessage(M.ChannelID, "You gave me a nil ID!", Notifiers)
+		if SecArg == "" {
+			SendMessage(M.ChannelID, "`You gave me a nil ID!`", Notifiers)
 		} else {
-			data := []byte(PID)
+			data := []byte(SecArg)
 			ioutil.WriteFile("PrimeGuild", data, 9000)
-			fmt.Println("Set new Prime Guild to '" + PID + "'")
-			SendMessage(M.ChannelID, "`Set new prime guild to "+PID+"`", sh.Notifiers)
+			fmt.Println("Set new Prime Guild to '" + SecArg + "'")
+			SendMessage(M.ChannelID, "`Set new prime guild to "+SecArg+"`", sh.Notifiers)
 		}
 	}
 	if strings.ToLower(Commands[0]) == "stopcheck" {
@@ -413,10 +423,10 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 		SendMessage(M.ChannelID, "`Checking loop restarted`", sh.Notifiers)
 	}
 	if strings.ToLower(Commands[0]) == "getuser" {
-		SendMessage(M.ChannelID, GMstring(Commands), sh.Notifiers)
+		SendMessage(M.ChannelID, GMstring(SecArg), sh.Notifiers)
 	}
 	if strings.ToLower(Commands[0]) == "getchannel" {
-		SendMessage(M.ChannelID, GCstring(Commands), sh.Notifiers)
+		SendMessage(M.ChannelID, GCstring(SecArg), sh.Notifiers)
 	}
 	if strings.ToLower(Commands[0]) == "getguild" {
 		PG, err := ioutil.ReadFile("PrimeGuild")
@@ -425,11 +435,12 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 			return
 		}
 		GG, err := GetGuild(string(PG))
+		if len(Commands) < 1 {
+			Commands[1] = GG.ID
+		}
 		var Channels []string
 		for _, Ch := range GG.Channels {
-			var Commands []string
-			Commands[1] = Ch.ID
-			Channels = append(Channels, GCstring(Commands))
+			Channels = append(Channels, GCstring(Ch.ID))
 		}
 		SendChannel, err := sh.dg.UserChannelCreate(M.Author.ID)
 		if err != nil {
@@ -438,8 +449,8 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 		var not []string
 		not = append(not, SendChannel.ID)
 		Owner := GetUser(GG.OwnerID, GG)
-		var own []string
-		own = append(own, Owner.ID)
+		var own string
+		own = Owner.ID
 		SendMessage(SendChannel.ID, "`Guild:`\n`ID: "+GG.ID+"`\n`Name: "+GG.Name+"`\n`Region: "+GG.Region+"`\n`Icon: `"+discordgo.EndpointGuildIcon(GG.ID, GG.Icon), not)
 		SendMessage(SendChannel.ID, "`Owner`\n"+GMstring(own), not)
 		SendMessage(SendChannel.ID, "`Channels:`", not)
@@ -447,13 +458,68 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 			SendMessage(SendChannel.ID, CHS, not)
 		}
 	}
+	if strings.ToLower(Commands[0]) == "getrole" {
+		if SecArg == "" {
+			SendMessage(M.ChannelID, "`You gave me a nil role!`", sh.Notifiers)
+			return
+		}
+		data, users := GRstring(SecArg)
+		SendMessage(M.ChannelID, data, sh.Notifiers)
+		if strings.ToLower(thirdArg) == "users" {
+			if len(users) > 1999 {
+				SendMessage(M.ChannelID, "`(Cannot send users, too many)`", sh.Notifiers)
+				return
+			}
+			SendMessage(M.ChannelID, users, sh.Notifiers)
+		}
+	}
+	if strings.ToLower(Commands[0]) == "getpermissions" {
+		var perm string
+		if SecArg != "" {
+			perm = SecArg
+		} else {
+			SendMessage(M.ChannelID, "`You gave me a nil permission number!`", sh.Notifiers)
+			return
+		}
+		PerMap := ParsePermissions(GetB10(perm))
+		Perms := GetPermissions(PerMap)
+		PerS := strings.Join(Perms, ", ")
+		SendMessage(M.ChannelID, "`Permissions for: "+SecArg+"`\n`Binary: "+GetBit(GetB10(perm))+"`\n`Perms: "+PerS+"`", sh.Notifiers)
+	}
 }
 
 func DeepEqual(a *discordgo.Guild, b *discordgo.Guild) (bool, *FullChangeStruct) {
 	var Equal = true
 	var TotC = &FullChangeStruct{}
-	Equal, TotC = CompareGuild(a, b, TotC, Equal)
+	Equal, TotC, _ = CompareGuild(a, b, TotC, Equal) // replace _ -> Men
+	//var Comp = &CompiledChange{
+	//	Old: a,
+	//	New: b,
+	//}
+	//PSchanges, PSyes := HandleMention(Men, Comp) // mentioning chain
 	return Equal, TotC
+}
+
+// prime suspect dealing
+
+func HandleMention(Men *FullMention, biChange *CompiledChange) (*PrimeSuspectChange, bool) {
+	PS := sh.PrimeSuspects
+	//var PSC = &PrimeSuspectChange{}
+	//Old := biChange.Old
+	//New := biChange.New
+	for _, Ps := range PS {
+		for _, C := range Men.ChannelOR {
+			if C.perms {
+				for _, Or := range C.Perms {
+					if Or.ID == Ps {
+
+					}
+				}
+			}
+		}
+	}
+	var PSS = &PrimeSuspectChange{}
+	return PSS, false
 }
 
 // init
@@ -476,6 +542,17 @@ func Initialize(Token string) {
 	sh.dg.AddHandler(BBCreateMessage)
 
 	fmt.Println("SH: Handlers installed")
+
+	SUS, err := GetSuspects()
+
+	installPerms()
+
+	if err == nil {
+		sh.PrimeSuspects = SUS
+	} else {
+		var sus []string
+		sh.PrimeSuspects = sus
+	}
 	// "269441095862190082", "270639478379511809"
 	notifiers, err = GetNotifiers()
 	if err != nil {
