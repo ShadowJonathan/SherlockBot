@@ -3,3 +3,7 @@ bot/bot.exe
 bot/PrimeGuild 
 bot/Notifiers 
 *.GLD
+Notifiers
+PrimeGuild
+*.bat
+bot/log.txt

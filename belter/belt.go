@@ -369,11 +369,11 @@ func Initnewguild(GID string) *GuildInfo {
 // handlers
 
 func BBReady(s *discordgo.Session, r *discordgo.Ready) {
+	sh.StopLoop = true
 	sh.OwnID = r.User.ID
 	sh.OwnAV = r.User.Avatar
 	sh.OwnName = r.User.Username
 	fmt.Println("Discord: Ready message received\nSH: I am '" + sh.OwnName + "'!\nSH: My User ID: " + sh.OwnID)
-
 	StartCheckLoop()
 }
 
