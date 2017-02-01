@@ -169,7 +169,7 @@ func GCstring(Channel string) string {
 	if strings.ToLower(CH.Type) == "voice" {
 		return "`Channel:`\n`ID: " + CH.ID + "`\n`Name: " + CH.Name + "`\n`Type: " + CH.Type + "`"
 	} else {
-		return "`Channel:`\n`ID: " + CH.ID + "`\n`Name: " + CH.Name + "`\n`Topic: " + CH.Topic + "`\n`Type: " + CH.Type + "`"
+		return "`Channel:`\n`ID: " + CH.ID + "`\n`Name: " + CH.Name + "`\n`Topic: " + SanCode(CH.Topic) + "`\n`Type: " + CH.Type + "`"
 	}
 }
 
@@ -271,7 +271,10 @@ func GetSuspects() ([]string, error) {
 	}
 	TotalString := string(DATA)
 	return strings.Split(TotalString, "+"), nil
+}
 
+func SanCode(S string) string {
+	return strings.Replace(S, "\n", "`\n`", -1)
 }
 
 func WriteGLDfile(G *GuildInfo, Isb bool) error {
@@ -293,7 +296,7 @@ func WriteGLDfile(G *GuildInfo, Isb bool) error {
 				panic(err)
 			}
 			T := GetTimeForm()
-			ioutil.WriteFile(G.g.ID+"/"+intToString(T.Year)+"."+T.Month.String()+"."+intToString(T.Day)+"-"+intToString(T.Hour)+"."+intToString(T.Min)+".GLD", GU, 0777)
+			ioutil.WriteFile(G.g.ID+"/"+intToString(T.Year)+"."+T.Month.String()+"."+intToString(T.Day)+"-"+intToString(T.Hour)+".GLD", GU, 0777)
 			if err != nil {
 				fmt.Println(err)
 				panic(err)

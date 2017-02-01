@@ -34,6 +34,10 @@ var sh *Sherlock
 
 var PER *PermissionBit // do not change this
 
+var restart bool
+
+var upgrade bool
+
 // Functions after this
 
 var PrimeGuild string
@@ -85,7 +89,7 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 					ChangeString = append(ChangeString, "Channel "+Cold.Name+" changed it's name to "+Cnew.Name+"!")
 				}
 				if CCh.Topic {
-					ChangeString = append(ChangeString, "Channel "+Cold.Name+" changed topics from "+Cold.Topic+" to "+Cnew.Topic+"!")
+					ChangeString = append(ChangeString, "Channel "+Cold.Name+" changed topics from "+SanCode(Cold.Topic)+" to "+SanCode(Cnew.Topic)+"!")
 				}
 				if CCh.perms {
 					for _, P := range CCh.Perms {
@@ -264,7 +268,7 @@ func StartCheckLoop() {
 
 func CheckLoop(Gid string, LastCheck *LastChangeStatus) {
 	for sh.StopLoop == false {
-		time.Sleep(45 * time.Second)
+		time.Sleep(60 * time.Second)
 		GI, err := GetGLDfile(LastCheck.GI.g.ID)
 		if err != nil {
 			fmt.Println("Error getting GLD file: " + err.Error())
@@ -524,8 +528,10 @@ func HandleMention(Men *FullMention, biChange *CompiledChange) (*PrimeSuspectCha
 
 // init
 
-func Initialize(Token string) {
+func Initialize(Token string) (bool, bool) {
 	isdebug, err := ioutil.ReadFile("debugtoggle")
+	restart = false
+	upgrade = false
 	sh = &Sherlock{
 		version:  Version{1, 0},
 		Debug:    (err == nil && len(isdebug) > 0),
@@ -535,7 +541,7 @@ func Initialize(Token string) {
 	sh.dg, err = discordgo.New(Token)
 	if err != nil {
 		fmt.Println("Discord Session error, check token, error message: " + err.Error())
-		return
+		return false, false
 	}
 	// handlers
 	sh.dg.AddHandler(BBReady)
@@ -571,4 +577,5 @@ func Initialize(Token string) {
 	}
 	fmt.Println("SH: Sherlock stopping...")
 	sh.dg.Close()
+	return restart, upgrade
 }
