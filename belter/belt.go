@@ -490,6 +490,20 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 		PerS := strings.Join(Perms, ", ")
 		SendMessage(M.ChannelID, "`Permissions for: "+SecArg+"`\n`Binary: "+GetBit(GetB10(perm))+"`\n`Perms: "+PerS+"`", sh.Notifiers)
 	}
+	if strings.ToLower(Commands[0]) == "stop" {
+		SendMessage(M.ChannelID, "`Stopping bot...`", sh.Notifiers)
+		sh.Stop = true
+	}
+	if strings.ToLower(Commands[0]) == "restart" {
+		SendMessage(M.ChannelID, "`Restarting bot...`", sh.Notifiers)
+		restart = true
+		sh.Stop = true
+	}
+	if strings.ToLower(Commands[0]) == "upgrade" {
+		SendMessage(M.ChannelID, "`Upgrading bot...`", sh.Notifiers)
+		upgrade = true
+		sh.Stop = true
+	}
 }
 
 func DeepEqual(a *discordgo.Guild, b *discordgo.Guild) (bool, *FullChangeStruct) {

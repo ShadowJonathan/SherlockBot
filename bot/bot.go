@@ -11,24 +11,34 @@ import (
 	"../belter"
 )
 
+var loop bool
+
 func main() {
-	token, err := ioutil.ReadFile("../token")
-	if err != nil {
-		fmt.Println("Error reading token file: " + err.Error())
-		err := ioutil.WriteFile("../token", token, 9000)
+	loop = true
+	for {
+		token, err := ioutil.ReadFile("../token")
 		if err != nil {
-			fmt.Println("Error writing sample token file: " + err.Error())
+			fmt.Println("Error reading token file: " + err.Error())
+			err := ioutil.WriteFile("../token", token, 9000)
+			if err != nil {
+				fmt.Println("Error writing sample token file: " + err.Error())
+			}
+			ioutil.WriteFile("../retcmd.botboot", compilebotboot(false), 0777)
+			return
 		}
-		return
+		restart, upgrade := Belt.Initialize(strings.TrimSpace(string(token)))
+		if !restart && !upgrade {
+			ioutil.WriteFile("../retcmd.botboot", compilebotboot(upgrade), 0777)
+			return
+		}
+		if restart && !upgrade {
+		} else if upgrade {
+			ioutil.WriteFile("../retcmd.botboot", compilebotboot(upgrade), 0777)
+			return
+		}
 	}
-	restart, upgrade := Belt.Initialize(strings.TrimSpace(string(token)))
-	ioutil.WriteFile("../retcmd.botboot", compilebotboot(restart, upgrade), 0777)
 }
 
-func compilebotboot(restart, upgrade bool) []byte {
-	var BB []string
-	BB[0] = strconv.FormatBool(restart)
-	BB = append(BB, strconv.FormatBool(upgrade))
-	S := strings.Join(BB, " ")
-	return []byte(S)
+func compilebotboot(upgrade bool) []byte {
+	return []byte(strconv.FormatBool(upgrade))
 }
