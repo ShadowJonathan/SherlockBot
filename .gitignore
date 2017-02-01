@@ -7,3 +7,4 @@ Notifiers
 PrimeGuild
 *.bat
 bot/log.txt
+*.botboot

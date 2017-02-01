@@ -6,6 +6,8 @@ import (
 
 	"fmt"
 
+	"strconv"
+
 	"../belter"
 )
 
@@ -19,5 +21,14 @@ func main() {
 		}
 		return
 	}
-	Belt.Initialize(strings.TrimSpace(string(token)))
+	restart, upgrade := Belt.Initialize(strings.TrimSpace(string(token)))
+	ioutil.WriteFile("../retcmd.botboot", compilebotboot(restart, upgrade), 0777)
+}
+
+func compilebotboot(restart, upgrade bool) []byte {
+	var BB []string
+	BB[0] = strconv.FormatBool(restart)
+	BB = append(BB, strconv.FormatBool(upgrade))
+	S := strings.Join(BB, " ")
+	return []byte(S)
 }
