@@ -28,7 +28,7 @@ type Sherlock struct {
 	StopLoop      bool
 	Notifiers     []string
 	PrimeSuspects []string
-	LoopCooldown  int
+	LoopCooldown  time.Duration
 }
 
 // Vars after this
@@ -271,8 +271,7 @@ func StartCheckLoop() {
 
 func CheckLoop(Gid string, LastCheck *LastChangeStatus) {
 	for {
-		var second = time.Second
-		time.Sleep(time.Duration(sh.LoopCooldown) * second)
+		time.Sleep(sh.LoopCooldown)
 		if sh.StopLoop {
 			//WriteGLDfile(LastCheck.GI, false) //?
 			return
@@ -610,7 +609,7 @@ func Initialize(Token string) (bool, bool) {
 		Debug:        (err == nil && len(isdebug) > 0),
 		Stop:         false,
 		StopLoop:     false,
-		LoopCooldown: 60,
+		LoopCooldown: 60 * time.Second,
 	}
 	sh.dg, err = discordgo.New(Token)
 	if err != nil {
