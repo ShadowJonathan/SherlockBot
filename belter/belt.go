@@ -274,6 +274,7 @@ func CheckLoop(Gid string, LastCheck *LastChangeStatus) {
 		time.Sleep(sh.LoopCooldown)
 		if sh.StopLoop {
 			//WriteGLDfile(LastCheck.GI, false) //?
+			fmt.Println("Stopping loop...")
 			return
 		}
 		GI, err := GetGLDfile(LastCheck.GI.g.ID)
@@ -609,7 +610,7 @@ func Initialize(Token string) (bool, bool) {
 		Debug:        (err == nil && len(isdebug) > 0),
 		Stop:         false,
 		StopLoop:     false,
-		LoopCooldown: 60 * time.Second,
+		LoopCooldown: 30 * time.Second,
 	}
 	sh.dg, err = discordgo.New(Token)
 	if err != nil {
@@ -642,12 +643,12 @@ func Initialize(Token string) (bool, bool) {
 	if err == nil {
 		fmt.Println("Discord: Connection established")
 		for !sh.Stop {
-			sh.StopLoop = true
 			time.Sleep(400 * time.Millisecond)
 		}
 	} else {
 		fmt.Println("Error opening websocket connection: ", err.Error())
 	}
+	sh.StopLoop = true
 	fmt.Println("SH: Sherlock stopping...")
 	sh.dg.Close()
 	return restart, upgrade
