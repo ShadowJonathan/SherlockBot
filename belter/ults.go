@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"log"
+
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -32,13 +34,7 @@ func GetOR(ID string, Channel *discordgo.Channel) *discordgo.PermissionOverwrite
 }
 
 func GetUser(ID string, Guild *discordgo.Guild) *discordgo.User {
-	for _, M := range Guild.Members {
-		if M.User.ID == ID {
-			return M.User
-		}
-	}
-	var UU *discordgo.User
-	return UU
+	return GetMember(ID, Guild).User
 }
 
 func GetMember(ID string, Guild *discordgo.Guild) *discordgo.Member {
@@ -49,6 +45,138 @@ func GetMember(ID string, Guild *discordgo.Guild) *discordgo.Member {
 	}
 	var MM *discordgo.Member
 	return MM
+}
+
+func GetMemberN(ID string, Guild *discordgo.Guild) (*discordgo.Member, bool) {
+	for _, M := range Guild.Members {
+		if M.User.ID == ID {
+			return M, false
+		}
+	}
+	var MM *discordgo.Member
+	return MM, true
+}
+
+func GetMemID(name string, disc string, guild *discordgo.Guild, e bool) ([]string, bool) {
+	var all []string
+	var yus = false
+	if disc != "" && !e { //given username+disc, not exact
+		for _, m := range guild.Members {
+			if strings.ToLower(name) == strings.ToLower(m.User.Username) && disc == m.User.Discriminator {
+				all = append(all, m.User.ID)
+				yus = true
+			}
+		}
+	} else if disc != "" && e { //given username+disc, match exactly
+		for _, m := range guild.Members {
+			if name == m.User.Username && disc == m.User.Discriminator {
+				all = append(all, m.User.ID)
+				yus = true
+			}
+		}
+	} else if disc == "" && !e { //given nickname/username, no disc, not exact
+		for _, m := range guild.Members {
+			if (strings.ToLower(name) == strings.ToLower(m.User.Username)) || (strings.ToLower(name) == strings.ToLower(m.Nick)) || (name == m.User.ID) {
+				all = append(all, m.User.ID)
+				yus = true
+			}
+		}
+	} else if disc == "" && e { //given username, nickname, no disc, match exactly (y tho?)
+		for _, m := range guild.Members {
+			if (name == m.User.Username) || (name == m.Nick) || (name == m.User.ID) {
+				all = append(all, m.User.ID)
+				yus = true
+			}
+		}
+	}
+	return all, yus
+}
+
+func GetMemRaw(Raw []string) (*discordgo.Member, int, []string) { //0: no err, 1: nil value, 2: no match (ID), 3: no match (username), 4: no match (username+discriminator), 5: err reading primeguild, 6: multiple users (no disc), 7: multiple users (disc), 8: Unknown error
+	PG, err := ioutil.ReadFile("PrimeGuild")
+	var MU []string
+	var NoMem = &discordgo.Member{}
+	if err != nil {
+		fmt.Println("Error reading PG file: " + err.Error())
+		return NoMem, 5, MU
+	}
+	RawS, disc, e := ParseRaw(Raw)
+	if RawS == "" {
+		return NoMem, 1, MU
+	}
+	Guild, err := GetGuild(string(PG))
+	if err != nil {
+		log.Fatal(err)
+		return NoMem, 5, MU
+	}
+	if isnumberstring(RawS) {
+		mem, yus := GetMemID(RawS, "", Guild, e)
+		if !yus {
+			return NoMem, 2, MU
+		}
+		return GetMember(mem[0], Guild), 0, MU
+	}
+	IDs, yus := GetMemID(RawS, disc, Guild, e)
+	if yus {
+		if len(IDs) > 1 {
+			if disc == "" {
+				return NoMem, 6, IDs
+			} else {
+				return NoMem, 7, IDs
+			}
+		}
+		ID := IDs[0]
+		return GetMember(ID, Guild), 0, MU
+	}
+	if disc == "" {
+		return NoMem, 3, MU
+	} else if disc != "" {
+		return NoMem, 4, MU
+	}
+	return NoMem, 8, MU
+}
+
+func ParseRaw(Raw []string) (string, string, bool) {
+	if len(Raw) == 0 {
+		return "", "", false
+	}
+	if isnumberstring(Raw[0]) {
+		if len(Raw) > 1 {
+			if strings.ToLower(string(Raw[1][1])) == "e" && string(Raw[1][0]) == "-" {
+				return Raw[0], "", true
+			}
+		} else {
+			return Raw[0], "", false
+		}
+	}
+	var exact = false
+	var RawS string
+	if len(Raw) > 1 {
+		if string(Raw[len(Raw)-1][0]) == "-" && strings.ToLower(string(Raw[len(Raw)-1][1])) == "e" {
+			exact = true
+			Raw = Raw[:len(Raw)-1]
+		}
+		if len(Raw) > 1 {
+			RawS = strings.Join(Raw, " ")
+		} else {
+			RawS = Raw[0]
+		}
+	} else {
+		RawS = Raw[0]
+	}
+	if strings.ContainsAny(RawS, "#") {
+		FullUN := strings.Split(RawS, "#")
+		var UN string
+		var disc string
+		if len(FullUN) > 2 {
+			UN = strings.Join(FullUN[:len(FullUN)-1], " ")
+		} else {
+			UN = FullUN[0]
+		}
+		disc = FullUN[len(FullUN)-1]
+		return UN, disc, exact
+	}
+	return RawS, "", exact
 }
 
 func GetUserName(ID string, Guild *discordgo.Guild) string {
@@ -316,6 +444,16 @@ func WriteGLDfile(G *GuildInfo, Isb bool) error {
 		fmt.Println("GLD writing error: " + GIDerr.Error())
 		return GIDerr
 	}
+}
+
+func isnumberstring(s string) bool {
+	var check = true
+	for _, l := range s {
+		if !strings.ContainsAny(string(l), "0 1 2 3 4 5 6 7 8 9") {
+			check = false
+		}
+	}
+	return check
 }
 
 func GetBit(base10 int) string {

@@ -133,73 +133,56 @@ func CompareChannelstruct(a *discordgo.Channel, b *discordgo.Channel, ToTC *Full
 	return Equal, TotC
 }
 
-func NoteChannelDelete(a []*discordgo.Channel, b []*discordgo.Channel, TotC *FullChangeStruct) *FullChangeStruct {
-	var IsStillThere bool
+func NoteChannelDelete(cha *discordgo.Channel, TotC *FullChangeStruct) *FullChangeStruct {
 	var DelCh = &ChannelChange{}
-	for _, ChA := range a {
-		IsStillThere = false
-		for _, ChB := range b {
-			if ChA.ID == ChB.ID {
-				IsStillThere = true
-				_, TotC = CompareChannelstruct(ChA, ChB, TotC, false)
-			}
-		}
-		if !IsStillThere {
-			DelCh.ID = ChA.ID
-			DelCh.ExistCrisis = true
-			DelCh.Del = true
-			AllCh := TotC.Channels
-			AllCh = append(AllCh, DelCh)
-			TotC.Channels = AllCh
-			DelCh = &ChannelChange{}
-		}
-	}
+	DelCh.ID = cha.ID
+	DelCh.ExistCrisis = true
+	DelCh.Del = true
+	AllCh := TotC.Channels
+	AllCh = append(AllCh, DelCh)
+	TotC.Channels = AllCh
 	return TotC
 }
 
-func NoteChannelCreate(a []*discordgo.Channel, b []*discordgo.Channel, TotC *FullChangeStruct) *FullChangeStruct {
-	var IsOld = false
+func NoteChannelCreate(cha *discordgo.Channel, TotC *FullChangeStruct) *FullChangeStruct {
 	var NewCh = &ChannelChange{}
-	for _, ChB := range b {
-		IsOld = false
-		for _, ChA := range a {
-			if ChA.ID == ChB.ID {
-				IsOld = true
-				_, TotC = CompareChannelstruct(ChA, ChB, TotC, false)
-			}
-		}
-		if !IsOld {
-			NewCh.ID = ChB.ID
-			NewCh.ExistCrisis = true
-			NewCh.Mk = true
-			AllCh := TotC.Channels
-			AllCh = append(AllCh, NewCh)
-			TotC.Channels = AllCh
-			NewCh = &ChannelChange{}
-
-		}
-	}
+	NewCh.ID = cha.ID
+	NewCh.ExistCrisis = true
+	NewCh.Mk = true
+	AllCh := TotC.Channels
+	AllCh = append(AllCh, NewCh)
+	TotC.Channels = AllCh
 	return TotC
 }
 
 func CompareChannels(a []*discordgo.Channel, b []*discordgo.Channel, TotC *FullChangeStruct, Equal bool) (bool, *FullChangeStruct) {
-	if len(a) > len(b) {
-		Equal = false
-		TotC.Guild.channels = true
-		TotC = NoteChannelDelete(a, b, TotC)
-	}
-	if len(a) < len(b) {
-		Equal = false
-		TotC.Guild.channels = true
-		TotC = NoteChannelCreate(a, b, TotC)
-	}
-	if len(a) == len(b) {
-		for _, Ca := range a {
-			for _, Cb := range b {
-				if Ca.ID == Cb.ID {
-					Equal, TotC = CompareChannelstruct(Ca, Cb, TotC, Equal)
-				}
+	var Aisthere bool
+	var Bisthere bool
+	for _, Ca := range a {
+		Aisthere = false
+		for _, Cb := range b {
+			if Ca.ID == Cb.ID {
+				Equal, TotC = CompareChannelstruct(Ca, Cb, TotC, Equal)
+				Aisthere = true
 			}
+		}
+		if !Aisthere {
+			Equal = false
+			TotC.Guild.channels = true
+			TotC = NoteChannelDelete(Ca, TotC)
+		}
+	}
+	for _, Cb := range b {
+		Bisthere = false
+		for _, Ca := range a {
+			if Ca.ID == Cb.ID {
+				Bisthere = true
+			}
+		}
+		if !Bisthere {
+			Equal = false
+			TotC.Guild.channels = true
+			TotC = NoteChannelCreate(Cb, TotC)
 		}
 	}
 	return Equal, TotC
@@ -254,72 +237,56 @@ func CompareMemberstruct(a *discordgo.Member, b *discordgo.Member, TotC *FullCha
 	return Equal, TotC
 }
 
-func NoteMemberLeave(a []*discordgo.Member, b []*discordgo.Member, TotC *FullChangeStruct) *FullChangeStruct {
-	var IsStillThere = false
+func NoteMemberLeave(mem *discordgo.Member, TotC *FullChangeStruct) *FullChangeStruct {
 	var LeaveMem = &MemberChange{}
-	for _, ChA := range a {
-		IsStillThere = false
-		for _, ChB := range b {
-			if ChA.User.ID == ChB.User.ID {
-				IsStillThere = true
-				_, TotC = CompareMemberstruct(ChA, ChB, TotC, false)
-			}
-		}
-		if !IsStillThere {
-			LeaveMem.User.ID = ChA.User.ID
-			LeaveMem.ExistCrisis = true
-			LeaveMem.Leave = true
-			AllM := TotC.Members
-			AllM = append(AllM, LeaveMem)
-			TotC.Members = AllM
-			LeaveMem = &MemberChange{}
-		}
-	}
+	LeaveMem.User.ID = mem.User.ID
+	LeaveMem.ExistCrisis = true
+	LeaveMem.Leave = true
+	AllM := TotC.Members
+	AllM = append(AllM, LeaveMem)
+	TotC.Members = AllM
 	return TotC
 }
 
-func NoteMemberJoin(a []*discordgo.Member, b []*discordgo.Member, TotC *FullChangeStruct) *FullChangeStruct {
-	var IsOld = false
+func NoteMemberJoin(mem *discordgo.Member, TotC *FullChangeStruct) *FullChangeStruct {
 	var NewM = &MemberChange{}
-	for _, ChB := range b {
-		IsOld = false
-		for _, ChA := range a {
-			if ChA.User.ID == ChB.User.ID {
-				IsOld = true
-				_, TotC = CompareMemberstruct(ChA, ChB, TotC, false)
-			}
-		}
-		if !IsOld {
-			NewM.User.ID = ChB.User.ID
-			NewM.ExistCrisis = true
-			NewM.Join = true
-			AllM := TotC.Members
-			AllM = append(AllM, NewM)
-			TotC.Members = AllM
-			NewM = &MemberChange{}
-		}
-	}
+	NewM.User.ID = mem.User.ID
+	NewM.ExistCrisis = true
+	NewM.Join = true
+	AllM := TotC.Members
+	AllM = append(AllM, NewM)
+	TotC.Members = AllM
 	return TotC
 }
 
 func CompareMembers(a []*discordgo.Member, b []*discordgo.Member, TotC *FullChangeStruct, Equal bool) (bool, *FullChangeStruct) {
-	if len(a) > len(b) {
-		Equal = false
-		TotC.Guild.members = true
-		TotC = NoteMemberLeave(a, b, TotC)
-	}
-	if len(a) < len(b) {
-		Equal = false
-		TotC.Guild.members = true
-		TotC = NoteMemberJoin(a, b, TotC)
-	}
-	if len(a) == len(b) {
-		for _, Ca := range a {
-			for _, Cb := range b {
-				if Ca.User.ID == Cb.User.ID {
-					Equal, TotC = CompareMemberstruct(Ca, Cb, TotC, Equal)
-				}
+	var Aisthere bool
+	var Bisthere bool
+	for _, Ca := range a {
+		Aisthere = false
+		for _, Cb := range b {
+			if Ca.User.ID == Cb.User.ID {
+				Equal, TotC = CompareMemberstruct(Ca, Cb, TotC, Equal)
+				Aisthere = true
 			}
+		}
+		if !Aisthere {
+			Equal = false
+			TotC.Guild.members = true
+			TotC = NoteMemberLeave(Ca, TotC)
+		}
+	}
+	for _, Cb := range b {
+		Bisthere = false
+		for _, Ca := range a {
+			if Ca.User.ID == Cb.User.ID {
+				Bisthere = true
+			}
+		}
+		if !Bisthere {
+			Equal = false
+			TotC.Guild.members = true
+			TotC = NoteMemberJoin(Cb, TotC)
 		}
 	}
 	return Equal, TotC
@@ -363,72 +330,57 @@ func CompareRolestruct(a *discordgo.Role, b *discordgo.Role, TotC *FullChangeStr
 	return Equal, TotC
 }
 
-func NoteRoleRemove(a []*discordgo.Role, b []*discordgo.Role, TotC *FullChangeStruct) *FullChangeStruct {
-	var IsStillThere = false
+func NoteRoleRemove(rol *discordgo.Role, TotC *FullChangeStruct) *FullChangeStruct {
 	var DelR = &RoleChange{}
-	for _, ChA := range a {
-		IsStillThere = false
-		for _, ChB := range b {
-			if ChA.ID == ChB.ID {
-				IsStillThere = true
-				_, TotC = CompareRolestruct(ChA, ChB, TotC, false)
-			}
-		}
-		if !IsStillThere || len(b) == 0 {
-			DelR.ID = ChA.ID
-			DelR.ExistCrisis = true
-			DelR.Del = true
-			AllR := TotC.Roles
-			AllR = append(AllR, DelR)
-			TotC.Roles = AllR
-			DelR = &RoleChange{}
-		}
-	}
+	DelR.ID = rol.ID
+	DelR.ExistCrisis = true
+	DelR.Del = true
+	AllR := TotC.Roles
+	AllR = append(AllR, DelR)
+	TotC.Roles = AllR
+	DelR = &RoleChange{}
 	return TotC
 }
 
-func NoteRoleCreate(a []*discordgo.Role, b []*discordgo.Role, TotC *FullChangeStruct) *FullChangeStruct {
-	var IsOld = false
+func NoteRoleCreate(rol *discordgo.Role, TotC *FullChangeStruct) *FullChangeStruct {
 	var NewR = &RoleChange{}
-	for _, ChB := range b {
-		IsOld = false
-		for _, ChA := range a {
-			if ChA.ID == ChB.ID {
-				IsOld = true
-				_, TotC = CompareRolestruct(ChA, ChB, TotC, false)
-			}
-		}
-		if !IsOld || len(a) == 0 {
-			NewR.ID = ChB.ID
-			NewR.ExistCrisis = true
-			NewR.Mk = true
-			AllR := TotC.Roles
-			AllR = append(AllR, NewR)
-			TotC.Roles = AllR
-			NewR = &RoleChange{}
-		}
-	}
+	NewR.ID = rol.ID
+	NewR.ExistCrisis = true
+	NewR.Mk = true
+	AllR := TotC.Roles
+	AllR = append(AllR, NewR)
+	TotC.Roles = AllR
 	return TotC
 }
 
 func CompareRoles(a []*discordgo.Role, b []*discordgo.Role, TotC *FullChangeStruct, Equal bool) (bool, *FullChangeStruct) {
-	if len(a) > len(b) {
-		Equal = false
-		TotC.Guild.roles = true
-		TotC = NoteRoleRemove(a, b, TotC)
-	}
-	if len(a) < len(b) {
-		Equal = false
-		TotC.Guild.roles = true
-		TotC = NoteRoleCreate(a, b, TotC)
-	}
-	if len(a) == len(b) {
-		for _, Ca := range a {
-			for _, Cb := range b {
-				if Ca.ID == Cb.ID {
-					Equal, TotC = CompareRolestruct(Ca, Cb, TotC, Equal)
-				}
+	var Aisthere bool
+	var Bisthere bool
+	for _, Ca := range a {
+		Aisthere = false
+		for _, Cb := range b {
+			if Ca.ID == Cb.ID {
+				Equal, TotC = CompareRolestruct(Ca, Cb, TotC, Equal)
+				Aisthere = true
 			}
+		}
+		if !Aisthere {
+			Equal = false
+			TotC.Guild.roles = true
+			TotC = NoteRoleRemove(Ca, TotC)
+		}
+	}
+	for _, Cb := range b {
+		Bisthere = false
+		for _, Ca := range a {
+			if Ca.ID == Cb.ID {
+				Bisthere = true
+			}
+		}
+		if !Bisthere {
+			Equal = false
+			TotC.Guild.roles = true
+			TotC = NoteRoleCreate(Cb, TotC)
 		}
 	}
 	return Equal, TotC

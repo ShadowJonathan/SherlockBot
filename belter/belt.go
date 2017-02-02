@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"log"
+
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -26,6 +28,7 @@ type Sherlock struct {
 	StopLoop      bool
 	Notifiers     []string
 	PrimeSuspects []string
+	LoopCooldown  int
 }
 
 // Vars after this
@@ -267,8 +270,13 @@ func StartCheckLoop() {
 }
 
 func CheckLoop(Gid string, LastCheck *LastChangeStatus) {
-	for sh.StopLoop == false {
-		time.Sleep(60 * time.Second)
+	for {
+		var second = time.Second
+		time.Sleep(time.Duration(sh.LoopCooldown) * second)
+		if sh.StopLoop {
+			//WriteGLDfile(LastCheck.GI, false) //?
+			return
+		}
 		GI, err := GetGLDfile(LastCheck.GI.g.ID)
 		if err != nil {
 			fmt.Println("Error getting GLD file: " + err.Error())
@@ -300,7 +308,6 @@ func CheckLoop(Gid string, LastCheck *LastChangeStatus) {
 			sh.StopLoop = true
 		}
 	}
-	WriteGLDfile(LastCheck.GI, false)
 }
 
 func ResumeCheck(Gid string) *LastChangeStatus {
@@ -424,10 +431,62 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 	}
 	if strings.ToLower(Commands[0]) == "kickstart" {
 		StartCheckLoop()
-		SendMessage(M.ChannelID, "`Checking loop restarted`", sh.Notifiers)
+		SendMessage(M.ChannelID, "`Checking loop started`", sh.Notifiers)
 	}
 	if strings.ToLower(Commands[0]) == "getuser" {
-		SendMessage(M.ChannelID, GMstring(SecArg), sh.Notifiers)
+		//0: no err, 1: nil value, 2: no match (ID), 3: no match (username), 4: no match (username+discriminator), 5: err reading primeguild, 6: multiple users (no disc), 7: multiple users (disc), 8: Unknown error
+		U, errT, IDs := GetMemRaw(Commands[1:])
+		var e = false
+		if len(Commands[len(Commands)-1]) > 1 {
+			if string(Commands[len(Commands)-1][0]) == "-" && strings.ToLower(string(Commands[len(Commands)-1][1])) == "e" {
+				e = true
+			}
+		}
+		var TotS string
+		switch errT {
+		case 0:
+			SendMessage(M.ChannelID, GMstring(U.User.ID), sh.Notifiers)
+		case 1:
+			SendMessage(M.ChannelID, "`You gave me no user to check! Use it like this: !getuser <ID>/<Name>(#<discriminator>) (-e)`\n`Use -e to make lower and uppercase count in the search`", sh.Notifiers)
+		case 2:
+			SendMessage(M.ChannelID, "`I couldnt find '"+Commands[1]+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have mispelled it, try <Name>(#<discriminator>) instead of an ID, or double-check what you (probably) pasted.`", sh.Notifiers)
+		case 3:
+			if e {
+				TotS = strings.Join(Commands[1:len(Commands)-1], " ")
+			} else {
+				TotS = strings.Join(Commands[1:], " ")
+			}
+			SendMessage(M.ChannelID, "`I couldnt find '"+TotS+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have mispelled it, try <Name>(#<discriminator>) instead of just a name or nickname, or double-check what you typed.`", sh.Notifiers)
+		case 4:
+			if e {
+				TotS = strings.Join(Commands[1:len(Commands)-2], " ")
+			} else {
+				TotS = strings.Join(Commands[1:], " ")
+			}
+			SendMessage(M.ChannelID, "`I couldnt find '"+TotS+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have mispelled it, try <Name>(#<discriminator>) instead of just a name or nickname, or double-check what you typed.`", sh.Notifiers)
+		case 5:
+			SendMessage(M.ChannelID, "`Error 5, this is outside your hands, contact the owner of this bot immidiatly.`", sh.Notifiers)
+		case 6:
+			if len(IDs) > 10 {
+				SendMessage(M.ChannelID, "`More than 10 users have this user/nickname... `~~`(Are they having a party over there?)`~~\n`Try to define your search with a discriminator (<Name>#<discriminator>), or count upper and lower case by putting a \"-e\" behind your input.`", sh.Notifiers)
+			}
+			var NamesA []string
+			G, err := GetGuild(GetPG())
+			if err != nil {
+				log.Fatal("Guild load: " + err.Error())
+				return
+			}
+			for _, ID := range IDs {
+				NamesA = append(NamesA, GetUserName(ID, G))
+			}
+			Names := strings.Join(NamesA[:len(NamesA)-1], ", ")
+			Names = Names + " and " + NamesA[len(NamesA)-1]
+			SendMessage(M.ChannelID, "`I found more than one user; "+Names+".`\n`Try to define your search with a discriminator (<Name>#<discriminator>), or count upper and lower case by putting a \"-e\" behind your input.`", sh.Notifiers)
+		case 7:
+			SendMessage(M.ChannelID, "`Error 7, i found more than one user that have this username AND discriminator, use \"-e\" behind your input, please.`", sh.Notifiers)
+		case 8:
+			SendMessage(M.ChannelID, "`Error 8, please contact the bot's owner.`", sh.Notifiers)
+		}
 	}
 	if strings.ToLower(Commands[0]) == "getchannel" {
 		SendMessage(M.ChannelID, GCstring(SecArg), sh.Notifiers)
@@ -547,10 +606,11 @@ func Initialize(Token string) (bool, bool) {
 	restart = false
 	upgrade = false
 	sh = &Sherlock{
-		version:  Version{1, 0},
-		Debug:    (err == nil && len(isdebug) > 0),
-		Stop:     false,
-		StopLoop: false,
+		version:      Version{1, 0},
+		Debug:        (err == nil && len(isdebug) > 0),
+		Stop:         false,
+		StopLoop:     false,
+		LoopCooldown: 60,
 	}
 	sh.dg, err = discordgo.New(Token)
 	if err != nil {
@@ -573,7 +633,6 @@ func Initialize(Token string) (bool, bool) {
 		var sus []string
 		sh.PrimeSuspects = sus
 	}
-	// "269441095862190082", "270639478379511809"
 	notifiers, err = GetNotifiers()
 	if err != nil {
 		fmt.Println("Error getting Notifier file: " + err.Error())
@@ -584,6 +643,7 @@ func Initialize(Token string) (bool, bool) {
 	if err == nil {
 		fmt.Println("Discord: Connection established")
 		for !sh.Stop {
+			sh.StopLoop = true
 			time.Sleep(400 * time.Millisecond)
 		}
 	} else {

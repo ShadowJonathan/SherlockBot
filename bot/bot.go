@@ -11,10 +11,7 @@ import (
 	"../belter"
 )
 
-var loop bool
-
 func main() {
-	loop = true
 	for {
 		token, err := ioutil.ReadFile("../token")
 		if err != nil {
@@ -26,7 +23,9 @@ func main() {
 			ioutil.WriteFile("../retcmd.botboot", compilebotboot(false), 0777)
 			return
 		}
+		
 		restart, upgrade := Belt.Initialize(strings.TrimSpace(string(token)))
+		
 		if !restart && !upgrade {
 			ioutil.WriteFile("../retcmd.botboot", compilebotboot(upgrade), 0777)
 			return
