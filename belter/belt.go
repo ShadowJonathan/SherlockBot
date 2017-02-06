@@ -41,6 +41,8 @@ var restart bool
 
 var upgrade bool
 
+var CheckerCount int
+
 // Functions after this
 
 var PrimeGuild string
@@ -254,6 +256,7 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 }
 
 func StartCheckLoop() {
+	CheckerCount++
 	GLDB, err := ioutil.ReadFile("PrimeGuild")
 	if err != nil {
 		fmt.Println("Error reading PG file: " + err.Error())
@@ -270,9 +273,10 @@ func StartCheckLoop() {
 }
 
 func CheckLoop(Gid string, LastCheck *LastChangeStatus) {
+	THISCHECK := CheckerCount
 	for {
 		time.Sleep(sh.LoopCooldown)
-		if sh.StopLoop {
+		if sh.StopLoop || THISCHECK != CheckerCount {
 			//WriteGLDfile(LastCheck.GI, false) //?
 			return
 		}
@@ -601,6 +605,7 @@ func HandleMention(Men *FullMention, biChange *CompiledChange) (*PrimeSuspectCha
 // init
 
 func Initialize(Token string) (bool, bool) {
+	CheckerCount = 0
 	isdebug, err := ioutil.ReadFile("debugtoggle")
 	restart = false
 	upgrade = false
