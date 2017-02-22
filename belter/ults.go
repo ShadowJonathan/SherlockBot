@@ -10,10 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"log"
-
 	"github.com/bwmarrin/discordgo"
 )
+
+func Log(i string) {
+	logf.Println(i)
+	fmt.Println(i)
+}
 
 func SetLC(LC *LastChangeStatus, g *discordgo.Guild) *LastChangeStatus {
 	GI := LC.GI
@@ -106,7 +109,7 @@ func GetMemRaw(Raw []string) (*discordgo.Member, int, []string) { //0: no err, 1
 	}
 	Guild, err := GetGuild(string(PG))
 	if err != nil {
-		log.Fatal(err)
+		logf.Fatal(err)
 		return NoMem, 5, MU
 	}
 	if isnumberstring(RawS) {
@@ -249,8 +252,32 @@ func AltTimeForm() TimeFormat {
 	return TM
 }
 
+var memchan chan []*discordgo.Member
+
+func GetGuildState(Gid string) (*discordgo.Guild, error) {
+	state, err := sh.dg.State.Guild(Gid)
+	memchan = make(chan []*discordgo.Member)
+	sh.dg.AddHandlerOnce(func(s *discordgo.Session, m *discordgo.GuildMembersChunk) { memchan <- m.Members })
+	err2 := sh.dg.RequestGuildMembers(Gid, "", 0)
+	if err2 != nil {
+		return state, err2
+	}
+	data := <-memchan
+	state.Members = data
+	return state, err
+}
+
 func GetGuild(Gid string) (*discordgo.Guild, error) {
-	return sh.dg.Guild(Gid)
+	guild, err := sh.dg.State.Guild(Gid)
+	memchan = make(chan []*discordgo.Member)
+	sh.dg.AddHandlerOnce(func(s *discordgo.Session, m *discordgo.GuildMembersChunk) { memchan <- m.Members })
+	err2 := sh.dg.RequestGuildMembers(Gid, "", 0)
+	if err2 != nil {
+		return guild, err2
+	}
+	data := <-memchan
+	guild.Members = data
+	return guild, err
 }
 
 func getCMD(CMD string) []string {
@@ -314,7 +341,7 @@ func GRstring(role string) (string, string) {
 	Role := GetRole(role, GG)
 	var returnS string
 	var return2 string
-	returnS = "`Role:`\n`ID: " + Role.ID + "`\n`Name: " + Role.Name + "`\n`Bot Role: " + strconv.FormatBool(Role.Managed) + "`\n`Mentionable: " + strconv.FormatBool(Role.Mentionable) + "`\n`Special tab in sidebar: " + strconv.FormatBool(Role.Hoist) + "`\n`Color: " + strconv.FormatInt(int64(Role.Color), 16) + "`\n`Position (acending): " + strconv.FormatInt(int64(Role.Position), 10) + "`\n`Permissions: " + strconv.FormatInt(int64(Role.Permissions), 10)
+	returnS = "`Role:`\n`ID: " + Role.ID + "`\n`Name: " + Role.Name + "`\n`Bot Role: " + strconv.FormatBool(Role.Managed) + "`\n`Mentionable: " + strconv.FormatBool(Role.Mentionable) + "`\n`Special tab in sidebar: " + strconv.FormatBool(Role.Hoist) + "`\n`Color: " + strconv.FormatInt(int64(Role.Color), 16) + "`\n`Position (acending): " + strconv.FormatInt(int64(Role.Position), 10) + "`\n`Permissions: " + strconv.FormatInt(int64(Role.Permissions), 10) + "`"
 	var people []string
 	for _, P := range GG.Members {
 		for _, R := range P.Roles {
@@ -444,6 +471,10 @@ func WriteGLDfile(G *GuildInfo, Isb bool) error {
 		fmt.Println("GLD writing error: " + GIDerr.Error())
 		return GIDerr
 	}
+}
+
+func GSFI(i int) string {
+	return strconv.FormatInt(int64(i), 10)
 }
 
 func isnumberstring(s string) bool {

@@ -1,7 +1,6 @@
 package Belt
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/bwmarrin/discordgo"
@@ -262,6 +261,9 @@ func NoteMemberJoin(mem *discordgo.Member, TotC *FullChangeStruct) *FullChangeSt
 func CompareMembers(a []*discordgo.Member, b []*discordgo.Member, TotC *FullChangeStruct, Equal bool) (bool, *FullChangeStruct) {
 	var Aisthere bool
 	var Bisthere bool
+	if len(b) == 0 {
+		panic(b)
+	}
 	for _, Ca := range a {
 		Aisthere = false
 		for _, Cb := range b {
@@ -406,13 +408,7 @@ func CompareGuild(a *discordgo.Guild, b *discordgo.Guild, TotC *FullChangeStruct
 	Equal, TotC = CompareChannels(a.Channels, b.Channels, TotC, Equal)
 	Equal, TotC = CompareMembers(a.Members, b.Members, TotC, Equal)
 	Equal, TotC = CompareRoles(a.Roles, b.Roles, TotC, Equal)
-	line, _ := json.Marshal(TotC)
 	fmt.Println(GetTimeString(GetTimeForm(), false))
-	if !Equal {
-		fmt.Println("Change data:")
-		fmt.Println(string(line))
-		fmt.Println(Equal)
-	}
 	var MenT = &FullMention{
 		ChannelOR: TotC.Channels,
 		Members:   TotC.Members,

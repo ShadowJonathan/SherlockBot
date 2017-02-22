@@ -3,6 +3,7 @@ package Belt
 import (
 	fmt "fmt"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -47,8 +48,18 @@ var PrimeGuild string
 
 var notifiers []string
 
+var timetoswitch int
+
 func CheckChange(G *GuildInfo, GID string) (bool, *discordgo.Guild, *FullChangeStruct) {
-	ChGl, err := GetGuild(GID)
+	var err error
+	var ChGl *discordgo.Guild
+	if timetoswitch > 2 {
+		ChGl, err = GetGuildState(GID)
+		timetoswitch = 0
+	} else {
+		ChGl, err = GetGuild(GID)
+		timetoswitch++
+	}
 	if err != nil {
 		fmt.Println("Error getting guild: " + err.Error())
 	}
@@ -72,16 +83,20 @@ func CheckChange(G *GuildInfo, GID string) (bool, *discordgo.Guild, *FullChangeS
 func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChangeStruct) []string {
 	var ChangeString []string
 	if TotC.Guild.Name {
-		ChangeString = append(ChangeString, "Server '"+Gold.Name+" changed it's name to '"+Gnew.Name+"!")
+		ChangeString = append(ChangeString, "Server **"+Gold.Name+"** changed it's name to **"+Gnew.Name+"**!")
+		Log("S " + Gold.ID + ": NEWNAME: " + Gold.Name + "->" + Gnew.Name)
 	}
 	if TotC.Guild.OwnerID {
-		ChangeString = append(ChangeString, "`ALERT!`\n`ALERT!`\n`ALERT!`\nServer "+Gold.Name+"'s owner just changed from "+GetUserName(Gold.OwnerID, Gold)+" to "+GetUserName(Gnew.OwnerID, Gnew)+"!!!")
+		ChangeString = append(ChangeString, "`ALERT!`\n`ALERT!`\n`ALERT!`\nServer **"+Gold.Name+"'s** owner just changed from **"+GetUserName(Gold.OwnerID, Gold)+"** to **"+GetUserName(Gnew.OwnerID, Gnew)+"**!!!")
+		Log("S " + Gold.ID + ": NEWOWNER: " + Gold.OwnerID + "->" + Gnew.OwnerID)
 	}
 	if TotC.Guild.Icon {
-		ChangeString = append(ChangeString, "Server "+Gold.Name+" changed it's icon!")
+		ChangeString = append(ChangeString, "Server **"+Gold.Name+"** changed it's icon!")
+		Log("S " + Gold.ID + ": NEWICON: " + Gold.Icon + "->" + Gnew.Icon)
 	}
 	if TotC.Guild.Region {
-		ChangeString = append(ChangeString, "Server "+Gold.Name+" changed it's region!\nPreviously: "+Gold.Region+"\nNow: "+Gnew.Region)
+		ChangeString = append(ChangeString, "Server **"+Gold.Name+"** changed it's region!\nPreviously: **"+Gold.Region+"**\nNow: **"+Gnew.Region+"**")
+		Log("S " + Gold.ID + ": NEWREGION: " + Gold.Region + "->" + Gnew.Region)
 	}
 	if TotC.Guild.channels {
 		for _, CCh := range TotC.Channels {
@@ -89,10 +104,12 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 				Cold := GetChannel(CCh.ID, Gold)
 				Cnew := GetChannel(CCh.ID, Gnew)
 				if CCh.Name {
-					ChangeString = append(ChangeString, "Channel "+Cold.Name+" changed it's name to "+Cnew.Name+"!")
+					ChangeString = append(ChangeString, "Channel **"+Cold.Name+"** changed it's name to "+Cnew.Name+"!")
+					Log("CH " + Cold.ID + ": NEWNAME: " + Cold.Name + "->" + Gnew.Name)
 				}
 				if CCh.Topic {
-					ChangeString = append(ChangeString, "Channel "+Cold.Name+" changed topics from "+SanCode(Cold.Topic)+" to "+SanCode(Cnew.Topic)+"!")
+					ChangeString = append(ChangeString, "Channel **"+Cold.Name+"** changed topics from "+SanCode(Cold.Topic)+" to "+SanCode(Cnew.Topic)+"!")
+					Log("CH " + Cold.ID + ": NEWTOPIC:\n" + Cold.Topic + "\n->\n" + Cnew.Topic)
 				}
 				if CCh.perms {
 					for _, P := range CCh.Perms {
@@ -103,19 +120,23 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 								Ror := GetRole(P.ID, Gold)
 
 								if P.Allow {
-									ChangeString = append(ChangeString, "Channel "+Cnew.Name+" has changed it's allowed overwrite-permissions for the "+Ror.Name+" role changed from `"+intToString(Oor.Allow)+"` to `"+intToString(Nor.Allow)+"`")
+									ChangeString = append(ChangeString, "Channel **"+Cnew.Name+"** has changed it's allowed overwrite-permissions for the **"+Ror.Name+"** role changed from `"+intToString(Oor.Allow)+"` to `"+intToString(Nor.Allow)+"`")
+									Log("CH " + Cold.ID + ": OR-ROLE" + Oor.ID + ": ALLOW: " + intToString(Oor.Allow) + "->" + intToString(Nor.Allow))
 								}
 								if P.Deny {
-									ChangeString = append(ChangeString, "Channel "+Cnew.Name+" has changed it's denied overwrite-permissions for the "+Ror.Name+" role changed from `"+intToString(Oor.Deny)+"` to `"+intToString(Nor.Deny)+"`")
+									ChangeString = append(ChangeString, "Channel **"+Cnew.Name+"** has changed it's denied overwrite-permissions for the "+Ror.Name+" role changed from `"+intToString(Oor.Deny)+"` to `"+intToString(Nor.Deny)+"`")
+									Log("CH " + Cold.ID + ": OR-ROLE" + Oor.ID + ": DENY: " + intToString(Oor.Allow) + "->" + intToString(Nor.Deny))
 								}
 							} else {
 								Mor := GetUser(P.ID, Gold)
 
 								if P.Allow {
-									ChangeString = append(ChangeString, "Channel "+Cnew.Name+" has changed it's allowed overwrite-permissions for "+Mor.Username+" changed from `"+intToString(Oor.Allow)+"` to `"+intToString(Nor.Allow)+"`")
+									ChangeString = append(ChangeString, "Channel **"+Cnew.Name+"** has changed it's allowed overwrite-permissions for "+Mor.Username+" changed from `"+intToString(Oor.Allow)+"` to `"+intToString(Nor.Allow)+"`")
+									Log("CH " + Cold.ID + ": OR-USER " + Mor.ID + ": ALLOW: " + intToString(Oor.Allow) + "->" + intToString(Nor.Allow))
 								}
 								if P.Deny {
-									ChangeString = append(ChangeString, "Channel "+Cnew.Name+" has changed it's denied overwrite-permissions for "+Mor.Username+" changed from `"+intToString(Oor.Deny)+"` to `"+intToString(Nor.Deny)+"`")
+									ChangeString = append(ChangeString, "Channel **"+Cnew.Name+"** has changed it's denied overwrite-permissions for "+Mor.Username+" changed from `"+intToString(Oor.Deny)+"` to `"+intToString(Nor.Deny)+"`")
+									Log("CH " + Cold.ID + ": OR-USER " + Mor.ID + ": DENY: " + intToString(Oor.Deny) + "->" + intToString(Nor.Deny))
 								}
 							}
 						} else {
@@ -123,19 +144,23 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 								Pmk := GetOR(P.ID, Cnew)
 								if Pmk.Type == "role" {
 									PR := GetRole(Pmk.ID, Gnew)
-									ChangeString = append(ChangeString, "New overwrite permission for role "+PR.Name+" has been granted for channel "+Cnew.Name+"!")
+									ChangeString = append(ChangeString, "New overwrite permission for role **"+PR.Name+"** has been granted for channel **"+Cnew.Name+"**!")
+									Log("CH " + Cold.ID + ": OR ROLE " + PR.ID + ": NEW")
 								} else {
 									PM := GetUser(Pmk.ID, Gnew)
-									ChangeString = append(ChangeString, "New overwrite permission for member "+PM.Username+" has been granted for channel "+Cnew.Name+"!")
+									ChangeString = append(ChangeString, "New overwrite permission for member **"+PM.Username+"** has been granted for channel **"+Cnew.Name+"**!")
+									Log("CH " + Cold.ID + ": OR USER " + PM.ID + ": NEW")
 								}
 							} else {
 								Pdel := GetOR(P.ID, Cold)
 								if Pdel.Type == "role" {
 									PR := GetRole(Pdel.ID, Gold)
-									ChangeString = append(ChangeString, "The overwritten permission for role "+PR.Name+" has been revoked for channel "+Cold.Name+"!")
+									ChangeString = append(ChangeString, "The overwritten permission for role **"+PR.Name+"** has been revoked for channel **"+Cold.Name+"**!")
+									Log("CH " + Cold.ID + ": OR ROLE " + PR.ID + ": NEW")
 								} else {
 									PM := GetUser(Pdel.ID, Gold)
-									ChangeString = append(ChangeString, "The overwritten permission for member "+PM.Username+" has been revoked for channel "+Cold.Name+"!")
+									ChangeString = append(ChangeString, "The overwritten permission for member **"+PM.Username+"** has been revoked for channel **"+Cold.Name+"**!")
+									Log("CH " + Cold.ID + ": OR USER " + PM.ID + ": DELETE")
 								}
 							}
 						}
@@ -144,11 +169,13 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 			} else {
 				if CCh.Mk {
 					Cmk := GetChannel(CCh.ID, Gnew)
-					ChangeString = append(ChangeString, "New channel created!\nName: "+Cmk.Name)
+					ChangeString = append(ChangeString, "New channel created!\nName: **"+Cmk.Name+"**")
+					Log("S " + Gold.ID + ": NEWCHANNEL: " + Cmk.ID)
 				}
 				if CCh.Del {
 					Cdel := GetChannel(CCh.ID, Gold)
-					ChangeString = append(ChangeString, "Channel "+Cdel.Name+" has been deleted.")
+					ChangeString = append(ChangeString, "Channel **"+Cdel.Name+"** has been deleted.")
+					Log("S " + Gold.ID + ": DELETECHANNEL: " + Cdel.ID)
 				}
 			}
 		}
@@ -159,25 +186,31 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 				Ro := GetRole(Rch.ID, Gold)
 				Rn := GetRole(Rch.ID, Gnew)
 				if Rch.Name {
-					ChangeString = append(ChangeString, "Role "+Ro.Name+" has changed it's name to "+Rn.Name)
+					ChangeString = append(ChangeString, "Role **"+Ro.Name+"** has changed it's name to **"+Rn.Name+"**")
+					Log("R " + Ro.ID + ": NEWNAME: " + Ro.Name + "->" + Rn.Name)
 				}
 				if Rch.Color {
-					ChangeString = append(ChangeString, "Role "+Rn.Name+" has changed it's color from `"+strconv.FormatInt(int64(Ro.Color), 16)+"` to `"+strconv.FormatInt(int64(Rn.Color), 16)+"`")
+					ChangeString = append(ChangeString, "Role **"+Rn.Name+"** has changed it's color from `"+strconv.FormatInt(int64(Ro.Color), 16)+"` to `"+strconv.FormatInt(int64(Rn.Color), 16)+"`")
+					Log("R " + Ro.ID + ": NEWCOLOR: " + strconv.FormatInt(int64(Ro.Color), 16) + "->" + strconv.FormatInt(int64(Rn.Color), 16))
 				}
 				if Rch.Perms {
-					ChangeString = append(ChangeString, "Role "+Rn.Name+" has changed it's permissions from `"+strconv.FormatInt(int64(Ro.Permissions), 10)+"` to `"+strconv.FormatInt(int64(Rn.Permissions), 10)+"`")
+					ChangeString = append(ChangeString, "Role **"+Rn.Name+"** has changed it's permissions from `"+strconv.FormatInt(int64(Ro.Permissions), 10)+"` to `"+strconv.FormatInt(int64(Rn.Permissions), 10)+"`")
+					Log("R " + Ro.ID + ": NEWPERM: " + intToString(Ro.Permissions) + "->" + intToString(Rn.Permissions))
 				}
 				if Rch.Position {
-					ChangeString = append(ChangeString, "Role "+Rn.Name+"'s position has been changed, previously: "+strconv.FormatInt(int64(Ro.Position), 10)+", now: "+strconv.FormatInt(int64(Rn.Position), 10))
+					ChangeString = append(ChangeString, "Role **"+Rn.Name+"'s** position has been changed, previously: "+strconv.FormatInt(int64(Ro.Position), 10)+", now: "+strconv.FormatInt(int64(Rn.Position), 10))
+					Log("R " + Ro.ID + ": NEWPOS: " + intToString(Ro.Position) + "->" + intToString(Rn.Position))
 				}
 			} else {
 				if Rch.Mk {
 					Nr := GetRole(Rch.ID, Gnew)
 					ChangeString = append(ChangeString, "New role added! ID: `"+Nr.ID+"`")
+					Log("S " + Gold.ID + ": NEWROLE: " + Nr.ID)
 				}
 				if Rch.Del {
 					Dr := GetRole(Rch.ID, Gold)
-					ChangeString = append(ChangeString, "Role "+Dr.Name+" has been deleted")
+					ChangeString = append(ChangeString, "Role **"+Dr.Name+"** has been deleted")
+					Log("S " + Gold.ID + ": DELETEROLE: " + Dr.ID)
 				}
 			}
 		}
@@ -188,13 +221,28 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 				Mold := GetMember(Mch.User.ID, Gold)
 				Mnew := GetMember(Mch.User.ID, Gnew)
 				if Mch.Nick {
-					ChangeString = append(ChangeString, "Member "+Mold.User.Username+" changed his/her nickname from "+Mold.Nick+" to "+Mnew.Nick)
+					if Mold.Nick == "" {
+						ChangeString = append(ChangeString, "Member **"+Mold.User.Username+"** got a nickname! **\""+Mnew.Nick+"\"**!")
+					} else if Mnew.Nick == "" {
+						ChangeString = append(ChangeString, "Member **"+Mold.User.Username+"** removed his/her nickname, previously: **\""+Mold.Nick+"\"**")
+					} else {
+						ChangeString = append(ChangeString, "Member **"+Mold.User.Username+"** changed his/her nickname from **\""+Mold.Nick+"\"** to **\""+Mnew.Nick+"\"**")
+					}
+					Log("M " + Mold.User.ID + ": NICK: " + Mold.Nick + "->" + Mnew.Nick)
 				}
 				if Mch.User.Username {
-					ChangeString = append(ChangeString, "Member "+Mold.User.Username+" changed his/her username to "+Mnew.User.Username)
+					ChangeString = append(ChangeString, "Member **"+Mold.User.Username+"** changed his/her username to **"+Mnew.User.Username+"**")
+					Log("M " + Mold.User.ID + ": USERNAME: " + Mold.User.Username + "->" + Mnew.User.Username)
 				}
 				if Mch.User.Avatar {
-					ChangeString = append(ChangeString, "Member "+Mold.User.Username+" changed his avatar from "+discordgo.EndpointUserAvatar(Mold.User.ID, Mold.User.Avatar)+"\nTo "+discordgo.EndpointUserAvatar(Mnew.User.ID, Mnew.User.Avatar))
+					if Mold.User.Avatar == "" {
+						ChangeString = append(ChangeString, "Member **"+Mold.User.Username+"** got an avatar!\n"+discordgo.EndpointUserAvatar(Mnew.User.ID, Mnew.User.Avatar))
+					} else if Mnew.User.Avatar == "" {
+						ChangeString = append(ChangeString, "Member **"+Mold.User.Username+"** removed his/her avatar.\nPrevious:"+discordgo.EndpointUserAvatar(Mold.User.ID, Mold.User.Avatar))
+					} else {
+						ChangeString = append(ChangeString, "Member **"+Mold.User.Username+"** changed his avatar from "+discordgo.EndpointUserAvatar(Mold.User.ID, Mold.User.Avatar)+"\nTo "+discordgo.EndpointUserAvatar(Mnew.User.ID, Mnew.User.Avatar))
+					}
+					Log("M " + Mold.User.ID + ": AVATAR: " + Mold.User.Avatar + "->" + Mnew.User.Avatar)
 				}
 				if Mch.Roles {
 					if Mch.RoleNew {
@@ -209,11 +257,13 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 								}
 								if !isOld {
 									NR := GetRole(Rn, Gnew)
-									ChangeString = append(ChangeString, "Member "+Mnew.User.Username+" got the "+NR.Name+" role!")
+									ChangeString = append(ChangeString, "Member **"+Mnew.User.Username+"** got the **"+NR.Name+"** role!")
+									Log("M " + Mold.User.ID + ": NEWROLE: " + NR.ID)
 								}
 							} else {
 								NR := GetRole(Rn, Gnew)
-								ChangeString = append(ChangeString, "Member "+Mnew.User.Username+" got the "+NR.Name+" role!")
+								ChangeString = append(ChangeString, "Member **"+Mnew.User.Username+"** got the **"+NR.Name+"** role!")
+								Log("M " + Mold.User.ID + ": NEWROLE: " + NR.ID)
 							}
 						}
 					}
@@ -229,11 +279,13 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 								}
 								if !IsThere {
 									OR := GetRole(Ro, Gold)
-									ChangeString = append(ChangeString, "Member "+Mnew.User.Username+" doesnt have the "+OR.Name+" role anymore!")
+									ChangeString = append(ChangeString, "Member **"+Mnew.User.Username+"** doesnt have the **"+OR.Name+"** role anymore!")
+									Log("M " + Mold.User.ID + ": DELETEROLE: " + OR.ID)
 								}
 							} else {
 								OR := GetRole(Ro, Gold)
-								ChangeString = append(ChangeString, "Member "+Mnew.User.Username+" doesnt have the "+OR.Name+" role anymore!")
+								ChangeString = append(ChangeString, "Member **"+Mnew.User.Username+"** doesnt have the **"+OR.Name+"** role anymore!")
+								Log("M " + Mold.User.ID + ": DELETEROLE: " + OR.ID)
 							}
 						}
 					}
@@ -241,11 +293,13 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 			} else {
 				if Mch.Join {
 					NM := GetUser(Mch.User.ID, Gnew)
-					ChangeString = append(ChangeString, "Member "+NM.Username+" has joined "+Gnew.Name+"!")
+					ChangeString = append(ChangeString, "Member **"+NM.Username+"** has joined **"+Gnew.Name+"**!")
+					Log("S " + Gold.ID + ": JOIN: " + NM.ID)
 				}
 				if Mch.Leave {
 					OM := GetUser(Mch.User.ID, Gold)
-					ChangeString = append(ChangeString, "Member "+OM.Username+" has left "+Gnew.Name+"!")
+					ChangeString = append(ChangeString, "Member **"+OM.Username+"** has left **"+Gnew.Name+"**!")
+					Log("S " + Gold.ID + ": LEAVE: " + OM.ID)
 				}
 			}
 		}
@@ -379,12 +433,21 @@ func Initnewguild(GID string) *GuildInfo {
 
 // handlers
 
+var isloaded bool
+
 func BBReady(s *discordgo.Session, r *discordgo.Ready) {
 	sh.StopLoop = true
 	sh.OwnID = r.User.ID
 	sh.OwnAV = r.User.Avatar
 	sh.OwnName = r.User.Username
-	fmt.Println("Discord: Ready message received\nSH: I am '" + sh.OwnName + "'!\nSH: My User ID: " + sh.OwnID)
+	if isloaded {
+		fmt.Println("Reconnected!")
+		Log("RECONNECT")
+	} else {
+		Log("CONNECT")
+		fmt.Println("Discord: Ready message received\nSH: I am '" + sh.OwnName + "'!\nSH: My User ID: " + sh.OwnID)
+		isloaded = true
+	}
 	StartCheckLoop()
 }
 
@@ -528,9 +591,10 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 		}
 		data, users := GRstring(SecArg)
 		SendMessage(M.ChannelID, data, sh.Notifiers)
-		if strings.ToLower(thirdArg) == "users" {
+		if strings.ToLower(thirdArg) == "users" || strings.ToLower(thirdArg) == "user" {
+
 			if len(users) > 1999 {
-				SendMessage(M.ChannelID, "`(Cannot send users, too many)`", sh.Notifiers)
+				SendMessage(M.ChannelID, "`(Cannot send users, too many have this role!)`", sh.Notifiers)
 				return
 			}
 			SendMessage(M.ChannelID, users, sh.Notifiers)
@@ -562,6 +626,21 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 		SendMessage(M.ChannelID, "`Upgrading bot...`", sh.Notifiers)
 		upgrade = true
 		sh.Stop = true
+	}
+	if strings.ToLower(Commands[0]) == "getlog" {
+		for _, n := range sh.Notifiers {
+			if M.ChannelID == n {
+				file, err := os.Open("log.txt")
+				if err != nil {
+					fmt.Println(err)
+				}
+				_, err = sh.dg.ChannelFileSend(M.ChannelID, "log.txt", file)
+				if err != nil {
+					fmt.Println(err)
+				}
+				return
+			}
+		}
 	}
 }
 
@@ -601,6 +680,10 @@ func HandleMention(Men *FullMention, biChange *CompiledChange) (*PrimeSuspectCha
 
 // init
 
+var l *os.File
+
+var logf *log.Logger
+
 func Initialize(Token string) (bool, bool) {
 	isdebug, err := ioutil.ReadFile("debugtoggle")
 	restart = false
@@ -610,7 +693,7 @@ func Initialize(Token string) (bool, bool) {
 		Debug:        (err == nil && len(isdebug) > 0),
 		Stop:         false,
 		StopLoop:     false,
-		LoopCooldown: 30 * time.Second,
+		LoopCooldown: 150 * time.Second,
 	}
 	sh.dg, err = discordgo.New(Token)
 	if err != nil {
@@ -639,6 +722,14 @@ func Initialize(Token string) (bool, bool) {
 	} else {
 		sh.Notifiers = notifiers
 	}
+
+	l, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Error opening log file: %v", err)
+	}
+	logf = log.New(l, "SH: ", log.LstdFlags)
+	defer finish()
+	Log("BOOT")
 	err = sh.dg.Open()
 	if err == nil {
 		fmt.Println("Discord: Connection established")
@@ -652,4 +743,15 @@ func Initialize(Token string) (bool, bool) {
 	fmt.Println("SH: Sherlock stopping...")
 	sh.dg.Close()
 	return restart, upgrade
+}
+
+func finish() {
+	if restart {
+		Log("RESTART")
+	} else if upgrade {
+		Log("UPGRADE")
+	} else if !restart && !upgrade {
+		Log("SHUTDOWN")
+		l.Close()
+	}
 }

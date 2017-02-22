@@ -8,3 +8,7 @@ PrimeGuild
 *.bat
 bot/log.txt
 *.botboot
+bot/log.txt
+.idea/**
+client/*.inf
+.DS_Store
