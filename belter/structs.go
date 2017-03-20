@@ -57,9 +57,9 @@ type FullChangeStruct struct {
 		OwnerID  bool `json:"OwnerID"`
 		Icon     bool `json:"Icon"`
 		Region   bool `json:"Region"`
-		channels bool `json:"Channels"`
-		roles    bool `json:"Roles"`
-		members  bool `json:"Members"`
+		Channels bool `json:"Channels"`
+		Roles    bool `json:"Roles"`
+		Members  bool `json:"Members"`
 	}
 	Channels []*ChannelChange `json:"CHs"`
 	Roles    []*RoleChange    `json:"Rs"`
@@ -167,10 +167,10 @@ type PSchannelchange struct { // Channel with OR permission change related to th
 
 type Permissions struct {
 	CREATE_INSTANT_INVITE bool //0x00000001	1	Allows creation of instant invites
-	KICK_MEMBERS          bool //0x00000002	10	Allows kicking members
-	BAN_MEMBERS           bool //0x00000004	100	Allows banning members
+	KICK_MEMBERS          bool //0x00000002	10	Allows kicking Members
+	BAN_MEMBERS           bool //0x00000004	100	Allows banning Members
 	ADMINISTRATOR         bool //0x00000008	1000	Allows all permissions and bypasses channel permission overwrites
-	MANAGE_CHANNELS       bool //0x00000010	10000	Allows management and editing of channels
+	MANAGE_CHANNELS       bool //0x00000010	10000	Allows management and editing of Channels
 	MANAGE_GUILD          bool //0x00000020	100000	Allows management and editing of the guild
 	ADD_REACTIONS         bool //0x00000040	1000000	Allows for the addition of reactions to messages
 	READ_MESSAGES         bool //0x00000400	10000000000	Allows reading messages in a channel. The channel will not appear for users without this permission
@@ -184,23 +184,23 @@ type Permissions struct {
 	USE_EXTERNAL_EMOJIS   bool //0x00040000	1000000000000000000	Allows the usage of custom emojis from other servers
 	CONNECT               bool //0x00100000	100000000000000000000	Allows for joining of a voice channel
 	SPEAK                 bool //0x00200000	1000000000000000000000	Allows for speaking in a voice channel
-	MUTE_MEMBERS          bool //0x00400000	10000000000000000000000	Allows for muting members in a voice channel
-	DEAFEN_MEMBERS        bool //0x00800000	100000000000000000000000	Allows for deafening of members in a voice channel
-	MOVE_MEMBERS          bool //0x01000000	1000000000000000000000000	Allows for moving of members between voice channels
+	MUTE_MEMBERS          bool //0x00400000	10000000000000000000000	Allows for muting Members in a voice channel
+	DEAFEN_MEMBERS        bool //0x00800000	100000000000000000000000	Allows for deafening of Members in a voice channel
+	MOVE_MEMBERS          bool //0x01000000	1000000000000000000000000	Allows for moving of Members between voice Channels
 	USE_VAD               bool //0x02000000	10000000000000000000000000	Allows for using voice-activity-detection in a voice channel
 	CHANGE_NICKNAME       bool //0x04000000	100000000000000000000000000	Allows for modification of own nickname
 	MANAGE_NICKNAMES      bool //0x08000000	1000000000000000000000000000	Allows for modification of other users nicknames
-	MANAGE_ROLES          bool //0x10000000	10000000000000000000000000000	Allows management and editing of roles
+	MANAGE_ROLES          bool //0x10000000	10000000000000000000000000000	Allows management and editing of Roles
 	MANAGE_WEBHOOKS       bool //0x20000000	100000000000000000000000000000	Allows management and editing of webhooks
 	MANAGE_EMOJIS         bool //0x40000000	1000000000000000000000000000000	Allows management and editing of emojis
 }
 
 type PermissionBit struct {
 	CREATE_INSTANT_INVITE int //0x00000001	1	Allows creation of instant invites
-	KICK_MEMBERS          int //0x00000002	10	Allows kicking members
-	BAN_MEMBERS           int //0x00000004	100	Allows banning members
+	KICK_MEMBERS          int //0x00000002	10	Allows kicking Members
+	BAN_MEMBERS           int //0x00000004	100	Allows banning Members
 	ADMINISTRATOR         int //0x00000008	1000	Allows all permissions and bypasses channel permission overwrites
-	MANAGE_CHANNELS       int //0x00000010	10000	Allows management and editing of channels
+	MANAGE_CHANNELS       int //0x00000010	10000	Allows management and editing of Channels
 	MANAGE_GUILD          int //0x00000020	100000	Allows management and editing of the guild
 	ADD_REACTIONS         int //0x00000040	1000000	Allows for the addition of reactions to messages
 	READ_MESSAGES         int //0x00000400	10000000000	Allows reading messages in a channel. The channel will not appear for users without this permission
@@ -214,13 +214,13 @@ type PermissionBit struct {
 	USE_EXTERNAL_EMOJIS   int //0x00040000	1000000000000000000	Allows the usage of custom emojis from other servers
 	CONNECT               int //0x00100000	100000000000000000000	Allows for joining of a voice channel
 	SPEAK                 int //0x00200000	1000000000000000000000	Allows for speaking in a voice channel
-	MUTE_MEMBERS          int //0x00400000	10000000000000000000000	Allows for muting members in a voice channel
-	DEAFEN_MEMBERS        int //0x00800000	100000000000000000000000	Allows for deafening of members in a voice channel
-	MOVE_MEMBERS          int //0x01000000	1000000000000000000000000	Allows for moving of members between voice channels
+	MUTE_MEMBERS          int //0x00400000	10000000000000000000000	Allows for muting Members in a voice channel
+	DEAFEN_MEMBERS        int //0x00800000	100000000000000000000000	Allows for deafening of Members in a voice channel
+	MOVE_MEMBERS          int //0x01000000	1000000000000000000000000	Allows for moving of Members between voice Channels
 	USE_VAD               int //0x02000000	10000000000000000000000000	Allows for using voice-activity-detection in a voice channel
 	CHANGE_NICKNAME       int //0x04000000	100000000000000000000000000	Allows for modification of own nickname
 	MANAGE_NICKNAMES      int //0x08000000	1000000000000000000000000000	Allows for modification of other users nicknames
-	MANAGE_ROLES          int //0x10000000	10000000000000000000000000000	Allows management and editing of roles
+	MANAGE_ROLES          int //0x10000000	10000000000000000000000000000	Allows management and editing of Roles
 	MANAGE_WEBHOOKS       int //0x20000000	100000000000000000000000000000	Allows management and editing of webhooks
 	MANAGE_EMOJIS         int //0x40000000	1000000000000000000000000000000	Allows management and editing of emojis
 }
@@ -228,10 +228,10 @@ type PermissionBit struct {
 func installPerms() {
 	PER = &PermissionBit{
 		CREATE_INSTANT_INVITE: 0,  //0x00000001	1	Allows creation of instant invites
-		KICK_MEMBERS:          1,  //0x00000002	10	Allows kicking members
-		BAN_MEMBERS:           2,  //0x00000004	100	Allows banning members
+		KICK_MEMBERS:          1,  //0x00000002	10	Allows kicking Members
+		BAN_MEMBERS:           2,  //0x00000004	100	Allows banning Members
 		ADMINISTRATOR:         3,  //0x00000008	1000	Allows all permissions and bypasses channel permission overwrites
-		MANAGE_CHANNELS:       4,  //0x00000010	10000	Allows management and editing of channels
+		MANAGE_CHANNELS:       4,  //0x00000010	10000	Allows management and editing of Channels
 		MANAGE_GUILD:          5,  //0x00000020	100000	Allows management and editing of the guild
 		ADD_REACTIONS:         6,  //0x00000040	1000000	Allows for the addition of reactions to messages
 		READ_MESSAGES:         10, //0x00000400	10000000000	Allows reading messages in a channel. The channel will not appear for users without this permission
@@ -245,13 +245,13 @@ func installPerms() {
 		USE_EXTERNAL_EMOJIS:   18, //0x00040000	1000000000000000000	Allows the usage of custom emojis from other servers
 		CONNECT:               20, //0x00100000	100000000000000000000	Allows for joining of a voice channel
 		SPEAK:                 21, //0x00200000	1000000000000000000000	Allows for speaking in a voice channel
-		MUTE_MEMBERS:          22, //0x00400000	10000000000000000000000	Allows for muting members in a voice channel
-		DEAFEN_MEMBERS:        23, //0x00800000	100000000000000000000000	Allows for deafening of members in a voice channel
-		MOVE_MEMBERS:          24, //0x01000000	1000000000000000000000000	Allows for moving of members between voice channels
+		MUTE_MEMBERS:          22, //0x00400000	10000000000000000000000	Allows for muting Members in a voice channel
+		DEAFEN_MEMBERS:        23, //0x00800000	100000000000000000000000	Allows for deafening of Members in a voice channel
+		MOVE_MEMBERS:          24, //0x01000000	1000000000000000000000000	Allows for moving of Members between voice Channels
 		USE_VAD:               25, //0x02000000	10000000000000000000000000	Allows for using voice-activity-detection in a voice channel
 		CHANGE_NICKNAME:       26, //0x04000000	100000000000000000000000000	Allows for modification of own nickname
 		MANAGE_NICKNAMES:      27, //0x08000000	1000000000000000000000000000	Allows for modification of other users nicknames
-		MANAGE_ROLES:          28, //0x10000000	10000000000000000000000000000	Allows management and editing of roles
+		MANAGE_ROLES:          28, //0x10000000	10000000000000000000000000000	Allows management and editing of Roles
 		MANAGE_WEBHOOKS:       29, //0x20000000	100000000000000000000000000000	Allows management and editing of webhooks
 		MANAGE_EMOJIS:         30, //0x40000000	1000000000000000000000000000000	Allows management and editing of emojis
 	}

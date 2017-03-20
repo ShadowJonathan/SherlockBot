@@ -9,6 +9,9 @@ import (
 var empty string
 var emptyB []byte
 
+// TODO optimize
+// with `func (tch *FullChangeStruct)` and stuff
+
 // overwrite
 
 func CompareORRoles(a *discordgo.Channel, b *discordgo.Channel, ChChange *ChannelChange, Equal bool, Guildchannels bool) (bool, *ChannelChange, bool) {
@@ -42,32 +45,7 @@ func CompareORRoles(a *discordgo.Channel, b *discordgo.Channel, ChChange *Channe
 	return Equal, ChChange, Chanbool
 }
 
-func NoteORDelete(a *discordgo.Channel, b *discordgo.Channel, ChChange *ChannelChange) *ChannelChange {
-	var IsStillThere = false
-	var DelOR = &PermORChange{}
-	for _, ORA := range a.PermissionOverwrites {
-		IsStillThere = false
-		for _, ORB := range b.PermissionOverwrites {
-			if ORA.ID == ORB.ID {
-				IsStillThere = true
-				_, ChChange, _ = CompareORRoles(a, b, ChChange, false, false)
-			}
-		}
-		if !IsStillThere {
-			DelOR.ID = ORA.ID
-			DelOR.ExistCrisis = true
-			DelOR.Del = true
-			AllOR := ChChange.Perms
-			AllOR = append(AllOR, DelOR)
-			ChChange.Perms = AllOR
-			ChChange.perms = true
-			DelOR = &PermORChange{}
-		}
-	}
-	return ChChange
-}
-
-func NoteORCreate(a *discordgo.Channel, b *discordgo.Channel, ChChange *ChannelChange) *ChannelChange {
+func CompareORs(a *discordgo.Channel, b *discordgo.Channel, ChChange *ChannelChange, equal bool) (*ChannelChange, bool) {
 	var IsOld = false
 	var CreateOR = &PermORChange{}
 	for _, ORA := range a.PermissionOverwrites {
@@ -79,6 +57,7 @@ func NoteORCreate(a *discordgo.Channel, b *discordgo.Channel, ChChange *ChannelC
 			}
 		}
 		if !IsOld {
+			equal = false
 			CreateOR.ID = ORA.ID
 			CreateOR.ExistCrisis = true
 			CreateOR.Mk = true
@@ -89,7 +68,31 @@ func NoteORCreate(a *discordgo.Channel, b *discordgo.Channel, ChChange *ChannelC
 			CreateOR = &PermORChange{}
 		}
 	}
-	return ChChange
+
+	var IsStillThere = false
+	var DelOR = &PermORChange{}
+	for _, ORA := range a.PermissionOverwrites {
+		IsStillThere = false
+		for _, ORB := range b.PermissionOverwrites {
+			if ORA.ID == ORB.ID {
+				IsStillThere = true
+				_, ChChange, _ = CompareORRoles(a, b, ChChange, false, false)
+			}
+		}
+		if !IsStillThere {
+			equal = false
+			DelOR.ID = ORA.ID
+			DelOR.ExistCrisis = true
+			DelOR.Del = true
+			AllOR := ChChange.Perms
+			AllOR = append(AllOR, DelOR)
+			ChChange.Perms = AllOR
+			ChChange.perms = true
+			DelOR = &PermORChange{}
+		}
+	}
+
+	return ChChange, equal
 }
 
 // channel
@@ -99,31 +102,19 @@ func CompareChannelstruct(a *discordgo.Channel, b *discordgo.Channel, ToTC *Full
 	TotC := ToTC
 	if a.Name != b.Name {
 		Equal = false
-		TotC.Guild.channels = true
+		TotC.Guild.Channels = true
 		ChChange.ID = a.ID
 		ChChange.Name = true
 	}
 	if a.Topic != b.Topic {
 		Equal = false
-		TotC.Guild.channels = true
+		TotC.Guild.Channels = true
 		ChChange.ID = a.ID
 		ChChange.Topic = true
 	}
-	if len(a.PermissionOverwrites) == len(b.PermissionOverwrites) {
-		Equal, ChChange, TotC.Guild.channels = CompareORRoles(a, b, ChChange, Equal, TotC.Guild.channels)
-	}
-	if len(a.PermissionOverwrites) < len(b.PermissionOverwrites) {
-		Equal = false
-		TotC.Guild.channels = true
-		ChChange.ID = a.ID
-		ChChange = NoteORDelete(a, b, ChChange)
-	}
-	if len(a.PermissionOverwrites) > len(b.PermissionOverwrites) {
-		Equal = false
-		TotC.Guild.channels = true
-		ChChange.ID = a.ID
-		ChChange = NoteORCreate(a, b, ChChange)
-	}
+
+	ChChange, Equal = CompareORs(a, b, ChChange, Equal)
+
 	if ChChange.ID != "" {
 		AllCh := TotC.Channels
 		AllCh = append(AllCh, ChChange)
@@ -167,7 +158,7 @@ func CompareChannels(a []*discordgo.Channel, b []*discordgo.Channel, TotC *FullC
 		}
 		if !Aisthere {
 			Equal = false
-			TotC.Guild.channels = true
+			TotC.Guild.Channels = true
 			TotC = NoteChannelDelete(Ca, TotC)
 		}
 	}
@@ -180,41 +171,41 @@ func CompareChannels(a []*discordgo.Channel, b []*discordgo.Channel, TotC *FullC
 		}
 		if !Bisthere {
 			Equal = false
-			TotC.Guild.channels = true
+			TotC.Guild.Channels = true
 			TotC = NoteChannelCreate(Cb, TotC)
 		}
 	}
 	return Equal, TotC
 }
 
-// members
+// Members
 
 func CompareMemberstruct(a *discordgo.Member, b *discordgo.Member, TotC *FullChangeStruct, Equal bool) (bool, *FullChangeStruct) {
 	var MemCh = &MemberChange{}
 	if a.Nick != b.Nick {
 		Equal = false
-		TotC.Guild.members = true
+		TotC.Guild.Members = true
 
 		MemCh.User.ID = a.User.ID
 		MemCh.Nick = true
 	}
 	if a.User.Avatar != b.User.Avatar {
 		Equal = false
-		TotC.Guild.members = true
+		TotC.Guild.Members = true
 
 		MemCh.User.ID = a.User.ID
 		MemCh.User.Avatar = true
 	}
 	if a.User.Username != b.User.Username {
 		Equal = false
-		TotC.Guild.members = true
+		TotC.Guild.Members = true
 
 		MemCh.User.ID = a.User.ID
 		MemCh.User.Username = true
 	}
 	if len(a.Roles) > len(b.Roles) {
 		Equal = false
-		TotC.Guild.members = true
+		TotC.Guild.Members = true
 
 		MemCh.User.ID = a.User.ID
 		MemCh.Roles = true
@@ -222,7 +213,7 @@ func CompareMemberstruct(a *discordgo.Member, b *discordgo.Member, TotC *FullCha
 	}
 	if len(a.Roles) < len(b.Roles) {
 		Equal = false
-		TotC.Guild.members = true
+		TotC.Guild.Members = true
 
 		MemCh.User.ID = a.User.ID
 		MemCh.Roles = true
@@ -274,7 +265,7 @@ func CompareMembers(a []*discordgo.Member, b []*discordgo.Member, TotC *FullChan
 		}
 		if !Aisthere {
 			Equal = false
-			TotC.Guild.members = true
+			TotC.Guild.Members = true
 			TotC = NoteMemberLeave(Ca, TotC)
 		}
 	}
@@ -287,38 +278,38 @@ func CompareMembers(a []*discordgo.Member, b []*discordgo.Member, TotC *FullChan
 		}
 		if !Bisthere {
 			Equal = false
-			TotC.Guild.members = true
+			TotC.Guild.Members = true
 			TotC = NoteMemberJoin(Cb, TotC)
 		}
 	}
 	return Equal, TotC
 }
 
-// roles
+// Roles
 
 func CompareRolestruct(a *discordgo.Role, b *discordgo.Role, TotC *FullChangeStruct, Equal bool) (bool, *FullChangeStruct) {
 	var RoleCh = &RoleChange{}
 	var detect bool
 	if a.Name != b.Name {
-		TotC.Guild.roles = true
+		TotC.Guild.Roles = true
 		RoleCh.ID = a.ID
 		RoleCh.Name = true
 		detect = true
 	}
 	if a.Permissions != b.Permissions {
-		TotC.Guild.roles = true
+		TotC.Guild.Roles = true
 		RoleCh.ID = a.ID
 		RoleCh.Perms = true
 		detect = true
 	}
 	if a.Position != b.Position {
-		TotC.Guild.roles = true
+		TotC.Guild.Roles = true
 		RoleCh.ID = a.ID
 		RoleCh.Position = true
 		detect = true
 	}
 	if a.Color != b.Color {
-		TotC.Guild.roles = true
+		TotC.Guild.Roles = true
 		RoleCh.ID = a.ID
 		RoleCh.Color = true
 		detect = true
@@ -368,7 +359,7 @@ func CompareRoles(a []*discordgo.Role, b []*discordgo.Role, TotC *FullChangeStru
 		}
 		if !Aisthere {
 			Equal = false
-			TotC.Guild.roles = true
+			TotC.Guild.Roles = true
 			TotC = NoteRoleRemove(Ca, TotC)
 		}
 	}
@@ -381,7 +372,7 @@ func CompareRoles(a []*discordgo.Role, b []*discordgo.Role, TotC *FullChangeStru
 		}
 		if !Bisthere {
 			Equal = false
-			TotC.Guild.roles = true
+			TotC.Guild.Roles = true
 			TotC = NoteRoleCreate(Cb, TotC)
 		}
 	}

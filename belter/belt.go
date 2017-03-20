@@ -10,6 +10,9 @@ import (
 
 	"log"
 
+	"encoding/json"
+
+	"../versions"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -21,7 +24,7 @@ type Version struct {
 type Sherlock struct {
 	dg            *discordgo.Session
 	Debug         bool
-	version       Version
+	version       versions.Version
 	OwnID         string
 	OwnAV         string
 	OwnName       string
@@ -82,8 +85,27 @@ func CheckChange(G *GuildInfo, GID string) (bool, *discordgo.Guild, *FullChangeS
 
 // rest funcs
 
+var count int
+
+func SaveDebug(data []byte) {
+	for {
+		_, err := ioutil.ReadFile("debug/data" + strconv.Itoa(count) + ".json")
+		if err == nil {
+			count++
+			continue
+		} else {
+			ioutil.WriteFile("debug/data"+strconv.Itoa(count)+".json", data, 0777)
+			count++
+			return
+		}
+	}
+}
 func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChangeStruct) []string {
 	var ChangeString []string
+	b, _ := json.Marshal(TotC)
+	fmt.Println(string(b))
+	SaveDebug(b)
+	sh.dg.ChannelMessageSend("269441095862190082", "```json\n"+string(b)+"\n```")
 	if TotC.Guild.Name {
 		ChangeString = append(ChangeString, "Server **"+Gold.Name+"** changed it's name to **"+Gnew.Name+"**!")
 		Log("S " + Gold.ID + ": NEWNAME: " + Gold.Name + "->" + Gnew.Name)
@@ -100,7 +122,7 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 		ChangeString = append(ChangeString, "Server **"+Gold.Name+"** changed it's region!\nPreviously: **"+Gold.Region+"**\nNow: **"+Gnew.Region+"**")
 		Log("S " + Gold.ID + ": NEWREGION: " + Gold.Region + "->" + Gnew.Region)
 	}
-	if TotC.Guild.channels {
+	if TotC.Guild.Channels {
 		for _, CCh := range TotC.Channels {
 			if !CCh.ExistCrisis {
 				Cold := GetChannel(CCh.ID, Gold)
@@ -182,7 +204,7 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 			}
 		}
 	}
-	if TotC.Guild.roles {
+	if TotC.Guild.Roles {
 		for _, Rch := range TotC.Roles {
 			if !Rch.ExistCrisis {
 				Ro := GetRole(Rch.ID, Gold)
@@ -217,7 +239,7 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 			}
 		}
 	}
-	if TotC.Guild.members {
+	if TotC.Guild.Members {
 		for _, Mch := range TotC.Members {
 			if !Mch.ExistCrisis {
 				Mold := GetMember(Mch.User.ID, Gold)
@@ -309,8 +331,17 @@ func AppendChange(Gold *discordgo.Guild, Gnew *discordgo.Guild, TotC *FullChange
 	return ChangeString
 }
 
+var currentlyrunningloop chan bool
+var running bool
+
+func init() {
+	currentlyrunningloop = make(chan bool, 1)
+}
+
 func StartCheckLoop() {
-	CheckerCount++
+	if running {
+		currentlyrunningloop <- true
+	}
 	GLDB, err := ioutil.ReadFile("PrimeGuild")
 	if err != nil {
 		fmt.Println("Error reading PG file: " + err.Error())
@@ -319,21 +350,19 @@ func StartCheckLoop() {
 		}
 		return
 	}
-	sh.StopLoop = true
 	PrimeGuild = string(GLDB)
 	LastCheck := ResumeCheck(PrimeGuild)
-	sh.StopLoop = false
-	go CheckLoop(PrimeGuild, LastCheck)
+	running = true
+	go CheckLoop(PrimeGuild, LastCheck, currentlyrunningloop)
 }
 
-func CheckLoop(Gid string, LastCheck *LastChangeStatus) {
-	THISCHECK := CheckerCount
+func CheckLoop(Gid string, LastCheck *LastChangeStatus, closehandle chan bool) {
 	for {
 		time.Sleep(sh.LoopCooldown)
-		if sh.StopLoop || THISCHECK != CheckerCount {
-			//WriteGLDfile(LastCheck.GI, false) //?
-			fmt.Println("Stopping loop...")
+		select {
+		case <-closehandle:
 			return
+		default:
 		}
 		GI, err := GetGLDfile(LastCheck.GI.g.ID)
 		if err != nil {
@@ -466,7 +495,17 @@ func BBCreateMessage(Ses *discordgo.Session, MesC *discordgo.MessageCreate) {
 
 // misc funx
 
+func TL(s string) string {
+	return strings.ToLower(s)
+}
+
 func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
+	defer func() {
+		rec := recover()
+		if rec != nil {
+			fmt.Println("Panicked at ProcessCMD")
+		}
+	}()
 	Commands := getCMD(CMD)
 	var SecArg string = ""
 	if len(Commands) > 1 {
@@ -476,174 +515,239 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 	if len(Commands) > 2 {
 		thirdArg = Commands[2]
 	}
-	if strings.ToLower(Commands[0]) == "primeguild" {
-		if SecArg == "" {
-			SendMessage(M.ChannelID, "`You gave me a nil ID!`", Notifiers)
-		} else {
-			data := []byte(SecArg)
-			ioutil.WriteFile("PrimeGuild", data, 9000)
-			fmt.Println("Set new Prime Guild to '" + SecArg + "'")
-			SendMessage(M.ChannelID, "`Set new prime guild to "+SecArg+"`", sh.Notifiers)
-		}
-	}
-	if strings.ToLower(Commands[0]) == "stopcheck" {
-		if !sh.StopLoop {
-			sh.StopLoop = true
-			fmt.Println("Checking loop stopped")
-			SendMessage(M.ChannelID, "`Stopped checking loop`", sh.Notifiers)
-		}
-		if sh.StopLoop {
-			SendMessage(M.ChannelID, "`Checking loop isn't running!`", sh.Notifiers)
-		}
-	}
-	if strings.ToLower(Commands[0]) == "kickstart" {
-		StartCheckLoop()
-		SendMessage(M.ChannelID, "`Checking loop started`", sh.Notifiers)
-	}
-	if strings.ToLower(Commands[0]) == "getuser" {
-		//0: no err, 1: nil value, 2: no match (ID), 3: no match (username), 4: no match (username+discriminator), 5: err reading primeguild, 6: multiple users (no disc), 7: multiple users (disc), 8: Unknown error
-		U, errT, IDs := GetMemRaw(Commands[1:])
-		var e = false
-		if len(Commands[len(Commands)-1]) > 1 {
-			if string(Commands[len(Commands)-1][0]) == "-" && strings.ToLower(string(Commands[len(Commands)-1][1])) == "e" {
-				e = true
-			}
-		}
-		var TotS string
-		switch errT {
-		case 0:
-			SendMessage(M.ChannelID, GMstring(U.User.ID), sh.Notifiers)
-		case 1:
-			SendMessage(M.ChannelID, "`You gave me no user to check! Use it like this: !getuser <ID>/<Name>(#<discriminator>) (-e)`\n`Use -e to make lower and uppercase count in the search`", sh.Notifiers)
-		case 2:
-			SendMessage(M.ChannelID, "`I couldnt find '"+Commands[1]+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have mispelled it, try <Name>(#<discriminator>) instead of an ID, or double-check what you (probably) pasted.`", sh.Notifiers)
-		case 3:
-			if e {
-				TotS = strings.Join(Commands[1:len(Commands)-1], " ")
+	switch TL(Commands[0]) {
+	case "primeguild":
+		{
+			if SecArg == "" {
+				SendMessage(M.ChannelID, "`You gave me a nil ID!`", Notifiers)
 			} else {
-				TotS = strings.Join(Commands[1:], " ")
+				data := []byte(SecArg)
+				ioutil.WriteFile("PrimeGuild", data, 9000)
+				fmt.Println("Set new Prime Guild to '" + SecArg + "'")
+				SendMessage(M.ChannelID, "`Set new prime guild to "+SecArg+"`", sh.Notifiers)
 			}
-			SendMessage(M.ChannelID, "`I couldnt find '"+TotS+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have mispelled it, try <Name>(#<discriminator>) instead of just a name or nickname, or double-check what you typed.`", sh.Notifiers)
-		case 4:
-			if e {
-				TotS = strings.Join(Commands[1:len(Commands)-2], " ")
-			} else {
-				TotS = strings.Join(Commands[1:], " ")
+		}
+	case "stopcheck":
+		{
+			if !sh.StopLoop {
+				sh.StopLoop = true
+				fmt.Println("Checking loop stopped")
+				SendMessage(M.ChannelID, "`Stopped checking loop`", sh.Notifiers)
 			}
-			SendMessage(M.ChannelID, "`I couldnt find '"+TotS+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have mispelled it, try <Name>(#<discriminator>) instead of just a name or nickname, or double-check what you typed.`", sh.Notifiers)
-		case 5:
-			SendMessage(M.ChannelID, "`Error 5, this is outside your hands, contact the owner of this bot immidiatly.`", sh.Notifiers)
-		case 6:
-			if len(IDs) > 10 {
-				SendMessage(M.ChannelID, "`More than 10 users have this user/nickname... `~~`(Are they having a party over there?)`~~\n`Try to define your search with a discriminator (<Name>#<discriminator>), or count upper and lower case by putting a \"-e\" behind your input.`", sh.Notifiers)
+			if sh.StopLoop {
+				SendMessage(M.ChannelID, "`Checking loop isn't running!`", sh.Notifiers)
 			}
-			var NamesA []string
-			G, err := GetGuild(GetPG())
+		}
+	case "kickstart":
+		{
+			StartCheckLoop()
+			SendMessage(M.ChannelID, "`Checking loop started`", sh.Notifiers)
+		}
+	case "getuser":
+		{
+			//0: no err, 1: nil value, 2: no match (ID), 3: no match (username), 4: no match (username+discriminator), 5: err reading primeguild, 6: multiple users (no disc), 7: multiple users (disc), 8: Unknown error
+			U, errT, IDs := GetMemRaw(Commands[1:])
+			var e = false
+			if len(Commands[len(Commands)-1]) > 1 {
+				if string(Commands[len(Commands)-1][0]) == "-" && strings.ToLower(string(Commands[len(Commands)-1][1])) == "e" {
+					e = true
+				}
+			}
+			var TotS string
+			switch errT {
+			case 0:
+				SendMessage(M.ChannelID, GMstring(U.User.ID), sh.Notifiers)
+			case 1:
+				SendMessage(M.ChannelID, "`You gave me no user to check! Use it like this: !getuser <ID>/<Name>(#<discriminator>) (-e)`\n`Use -e to make lower and uppercase count in the search`", sh.Notifiers)
+			case 2:
+				SendMessage(M.ChannelID, "`I couldnt find '"+Commands[1]+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have mispelled it, try <Name>(#<discriminator>) instead of an ID, or double-check what you (probably) pasted.`", sh.Notifiers)
+			case 3:
+				if e {
+					TotS = strings.Join(Commands[1:len(Commands)-1], " ")
+				} else {
+					TotS = strings.Join(Commands[1:], " ")
+				}
+				SendMessage(M.ChannelID, "`I couldnt find '"+TotS+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have mispelled it, try <Name>(#<discriminator>) instead of just a name or nickname, or double-check what you typed.`", sh.Notifiers)
+			case 4:
+				if e {
+					TotS = strings.Join(Commands[1:len(Commands)-2], " ")
+				} else {
+					TotS = strings.Join(Commands[1:], " ")
+				}
+				SendMessage(M.ChannelID, "`I couldnt find '"+TotS+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have mispelled it, try <Name>(#<discriminator>) instead of just a name or nickname, or double-check what you typed.`", sh.Notifiers)
+			case 5:
+				SendMessage(M.ChannelID, "`Error 5, this is outside your hands, contact the owner of this bot immidiatly.`", sh.Notifiers)
+			case 6:
+				if len(IDs) > 10 {
+					SendMessage(M.ChannelID, "`More than 10 users have this user/nickname... `~~`(Are they having a party over there?)`~~\n`Try to define your search with a discriminator (<Name>#<discriminator>), or count upper and lower case by putting a \"-e\" behind your input.`", sh.Notifiers)
+				}
+				var NamesA []string
+				G, err := GetGuild(GetPG())
+				if err != nil {
+					log.Fatal("Guild load: " + err.Error())
+					return
+				}
+				for _, ID := range IDs {
+					NamesA = append(NamesA, GetUserName(ID, G))
+				}
+				Names := strings.Join(NamesA[:len(NamesA)-1], ", ")
+				Names = Names + " and " + NamesA[len(NamesA)-1]
+				SendMessage(M.ChannelID, "`I found more than one user; "+Names+".`\n`Try to define your search with a discriminator (<Name>#<discriminator>), or count upper and lower case by putting a \"-e\" behind your input.`", sh.Notifiers)
+			case 7:
+				SendMessage(M.ChannelID, "`Error 7, i found more than one user that have this username AND discriminator, use \"-e\" behind your input, please.`", sh.Notifiers)
+			case 8:
+				SendMessage(M.ChannelID, "`Error 8, please contact the bot's owner.`", sh.Notifiers)
+			}
+		}
+	case "getchannel":
+		{
+			SendMessage(M.ChannelID, GCstring(SecArg), sh.Notifiers)
+		}
+	case "getguild":
+		{
+			PG, err := ioutil.ReadFile("PrimeGuild")
 			if err != nil {
-				log.Fatal("Guild load: " + err.Error())
+				fmt.Println("Error reading PG file: " + err.Error())
 				return
 			}
-			for _, ID := range IDs {
-				NamesA = append(NamesA, GetUserName(ID, G))
+			GG, err := GetGuild(string(PG))
+			if len(Commands) < 1 {
+				Commands[1] = GG.ID
 			}
-			Names := strings.Join(NamesA[:len(NamesA)-1], ", ")
-			Names = Names + " and " + NamesA[len(NamesA)-1]
-			SendMessage(M.ChannelID, "`I found more than one user; "+Names+".`\n`Try to define your search with a discriminator (<Name>#<discriminator>), or count upper and lower case by putting a \"-e\" behind your input.`", sh.Notifiers)
-		case 7:
-			SendMessage(M.ChannelID, "`Error 7, i found more than one user that have this username AND discriminator, use \"-e\" behind your input, please.`", sh.Notifiers)
-		case 8:
-			SendMessage(M.ChannelID, "`Error 8, please contact the bot's owner.`", sh.Notifiers)
+			var Channels []string
+			for _, Ch := range GG.Channels {
+				Channels = append(Channels, GCstring(Ch.ID))
+			}
+			SendChannel, err := sh.dg.UserChannelCreate(M.Author.ID)
+			if err != nil {
+				return
+			}
+			var not []string
+			not = append(not, SendChannel.ID)
+			Owner := GetUser(GG.OwnerID, GG)
+			var own string
+			own = Owner.ID
+			SendMessage(SendChannel.ID, "`Guild:`\n`ID: "+GG.ID+"`\n`Name: "+GG.Name+"`\n`Region: "+GG.Region+"`\n`Icon: `"+discordgo.EndpointGuildIcon(GG.ID, GG.Icon), not)
+			SendMessage(SendChannel.ID, "`Owner`\n"+GMstring(own), not)
+			SendMessage(SendChannel.ID, "`Channels:`", not)
+			for _, CHS := range Channels {
+				SendMessage(SendChannel.ID, CHS, not)
+			}
 		}
-	}
-	if strings.ToLower(Commands[0]) == "getchannel" {
-		SendMessage(M.ChannelID, GCstring(SecArg), sh.Notifiers)
-	}
-	if strings.ToLower(Commands[0]) == "getguild" {
-		PG, err := ioutil.ReadFile("PrimeGuild")
-		if err != nil {
-			fmt.Println("Error reading PG file: " + err.Error())
-			return
-		}
-		GG, err := GetGuild(string(PG))
-		if len(Commands) < 1 {
-			Commands[1] = GG.ID
-		}
-		var Channels []string
-		for _, Ch := range GG.Channels {
-			Channels = append(Channels, GCstring(Ch.ID))
-		}
-		SendChannel, err := sh.dg.UserChannelCreate(M.Author.ID)
-		if err != nil {
-			return
-		}
-		var not []string
-		not = append(not, SendChannel.ID)
-		Owner := GetUser(GG.OwnerID, GG)
-		var own string
-		own = Owner.ID
-		SendMessage(SendChannel.ID, "`Guild:`\n`ID: "+GG.ID+"`\n`Name: "+GG.Name+"`\n`Region: "+GG.Region+"`\n`Icon: `"+discordgo.EndpointGuildIcon(GG.ID, GG.Icon), not)
-		SendMessage(SendChannel.ID, "`Owner`\n"+GMstring(own), not)
-		SendMessage(SendChannel.ID, "`Channels:`", not)
-		for _, CHS := range Channels {
-			SendMessage(SendChannel.ID, CHS, not)
-		}
-	}
-	if strings.ToLower(Commands[0]) == "getrole" {
-		if SecArg == "" {
-			SendMessage(M.ChannelID, "`You gave me a nil role!`", sh.Notifiers)
-			return
-		}
-		data, users := GRstring(SecArg)
-		SendMessage(M.ChannelID, data, sh.Notifiers)
-		if strings.ToLower(thirdArg) == "users" || strings.ToLower(thirdArg) == "user" {
+	case "getrole":
+		{
+			if SecArg == "" {
+				SendMessage(M.ChannelID, "`You gave me a nil role!`", sh.Notifiers)
+				return
+			}
+			data, users := GRstring(SecArg)
+			SendMessage(M.ChannelID, data, sh.Notifiers)
+			if strings.ToLower(thirdArg) == "users" || strings.ToLower(thirdArg) == "user" {
 
-			if len(users) > 1999 {
-				SendMessage(M.ChannelID, "`(Cannot send users, too many have this role!)`", sh.Notifiers)
+				if len(users) > 1999 {
+					SendMessage(M.ChannelID, "`(Cannot send users, too many have this role!)`", sh.Notifiers)
+					return
+				}
+				SendMessage(M.ChannelID, users, sh.Notifiers)
+			}
+		}
+	case "getpermissions":
+		{
+			var perm string
+			if SecArg != "" {
+				perm = SecArg
+			} else {
+				SendMessage(M.ChannelID, "`You gave me a nil permission number!`", sh.Notifiers)
 				return
 			}
-			SendMessage(M.ChannelID, users, sh.Notifiers)
+			PerMap := ParsePermissions(GetB10(perm))
+			Perms := GetPermissions(PerMap)
+			PerS := strings.Join(Perms, ", ")
+			SendMessage(M.ChannelID, "`Permissions for: "+SecArg+"`\n`Binary: "+GetBit(GetB10(perm))+"`\n`Perms: "+PerS+"`", sh.Notifiers)
 		}
-	}
-	if strings.ToLower(Commands[0]) == "getpermissions" {
-		var perm string
-		if SecArg != "" {
-			perm = SecArg
+	case "stop":
+		{
+			SendMessage(M.ChannelID, "`Stopping bot...`", sh.Notifiers)
+			sh.Stop = true
+		}
+	case "restart":
+		{
+			SendMessage(M.ChannelID, "`Restarting bot...`", sh.Notifiers)
+			restart = true
+			sh.Stop = true
+		}
+	case "upgrade":
+		{
+			SendMessage(M.ChannelID, "`Upgrading bot...`", sh.Notifiers)
+			upgrade = true
+			sh.Stop = true
+		}
+	case "getlog":
+		{
+			for _, n := range sh.Notifiers {
+				if M.ChannelID == n {
+					file, err := os.Open("log.txt")
+					if err != nil {
+						fmt.Println(err)
+					}
+					_, err = sh.dg.ChannelFileSend(M.ChannelID, "log.txt", file)
+					if err != nil {
+						fmt.Println(err)
+					}
+					return
+				}
+			}
+		}
+	case "broadcast":
+		{
+			var up bool
+			var ver bool = true
+			if TL(SecArg) == "up" {
+				up = true
+			} else if TL(SecArg) == "down" {
+				up = false
+			} else {
+				SendMessage(M.ChannelID, "`You gave me no instruction!`", Notifiers)
+				return
+			}
+			if TL(thirdArg) == "false" {
+				ver = false
+			}
+			swap(up, ver)
+			if up && !ver {
+				SendMessage(M.ChannelID, "`Broadcasting sherlock identifier...`", Notifiers)
+			} else if !up {
+				SendMessage(M.ChannelID, "`Stopped broadcasting...`", Notifiers)
+			} else if ver && up {
+				SendMessage(M.ChannelID, "`Broadcasting sherlock identifier with version...`", Notifiers)
+			}
+		}
+	case "sweep":
+		SendMessage(M.ChannelID, "`Sweeping...`", Notifiers)
+		shs := sweep()
+		if len(shs) != 0 {
+			if len(shs) == 1 {
+				SendMessage(M.ChannelID, "`I found 1 Sherlock:`", Notifiers)
+			} else {
+				SendMessage(M.ChannelID, "`I found "+intToString(len(shs))+" Sherlock:`", Notifiers)
+			}
+			for id := range shs {
+				SendMessage(M.ChannelID, "`"+id+": "+GetUS(id).Username+"`", Notifiers)
+			}
 		} else {
-			SendMessage(M.ChannelID, "`You gave me a nil permission number!`", sh.Notifiers)
+			SendMessage(M.ChannelID, "`I found no Sherlocks...`", Notifiers)
+		}
+	case "identify":
+		U, errT, _ := GetMemRaw(Commands[1:])
+		if errT != 0 {
+			SendMessage(M.ChannelID, "`Error parsing ID or name, try again, or use !getuser with these same parameters to see what's wrong.`", Notifiers)
 			return
 		}
-		PerMap := ParsePermissions(GetB10(perm))
-		Perms := GetPermissions(PerMap)
-		PerS := strings.Join(Perms, ", ")
-		SendMessage(M.ChannelID, "`Permissions for: "+SecArg+"`\n`Binary: "+GetBit(GetB10(perm))+"`\n`Perms: "+PerS+"`", sh.Notifiers)
-	}
-	if strings.ToLower(Commands[0]) == "stop" {
-		SendMessage(M.ChannelID, "`Stopping bot...`", sh.Notifiers)
-		sh.Stop = true
-	}
-	if strings.ToLower(Commands[0]) == "restart" {
-		SendMessage(M.ChannelID, "`Restarting bot...`", sh.Notifiers)
-		restart = true
-		sh.Stop = true
-	}
-	if strings.ToLower(Commands[0]) == "upgrade" {
-		SendMessage(M.ChannelID, "`Upgrading bot...`", sh.Notifiers)
-		upgrade = true
-		sh.Stop = true
-	}
-	if strings.ToLower(Commands[0]) == "getlog" {
-		for _, n := range sh.Notifiers {
-			if M.ChannelID == n {
-				file, err := os.Open("log.txt")
-				if err != nil {
-					fmt.Println(err)
-				}
-				_, err = sh.dg.ChannelFileSend(M.ChannelID, "log.txt", file)
-				if err != nil {
-					fmt.Println(err)
-				}
-				return
-			}
+		ok, _ := identify(U)
+		if ok {
+			SendMessage(M.ChannelID, "`"+U.User.Username+" is a Sherlock.`", Notifiers)
+		} else {
+			SendMessage(M.ChannelID, "`"+U.User.Username+" is not a (visible) Sherlock.`", Notifiers)
 		}
 	}
 }
@@ -694,11 +798,11 @@ func Initialize(Token string) (bool, bool) {
 	restart = false
 	upgrade = false
 	sh = &Sherlock{
-		version:      Version{1, 0},
+		version:      versions.Version{0, 1, 0, 0},
 		Debug:        (err == nil && len(isdebug) > 0),
 		Stop:         false,
 		StopLoop:     false,
-		LoopCooldown: 150 * time.Second,
+		LoopCooldown: 150 * time.Second, // 150 seconds, normally
 	}
 	sh.dg, err = discordgo.New(Token)
 	if err != nil {

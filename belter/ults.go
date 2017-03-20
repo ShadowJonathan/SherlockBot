@@ -40,6 +40,17 @@ func GetUser(ID string, Guild *discordgo.Guild) *discordgo.User {
 	return GetMember(ID, Guild).User
 }
 
+func GetUS(ID string) *discordgo.User {
+	for _, g := range sh.dg.State.Guilds {
+		for _, m := range g.Members {
+			if ID == m.User.ID {
+				return m.User
+			}
+		}
+	}
+	return &discordgo.User{}
+}
+
 func GetMember(ID string, Guild *discordgo.Guild) *discordgo.Member {
 	for _, M := range Guild.Members {
 		if M.User.ID == ID {
@@ -317,8 +328,16 @@ func GCstring(Channel string) string {
 	if err != nil {
 		panic(PG)
 	}
-	if Channel == "" {
-		return ""
+	if !isnumberstring(Channel) {
+		for _, ch := range GG.Channels {
+			if TL(Channel) == TL(ch.Name) {
+				Channel = ch.ID
+				break
+			}
+		}
+		if !isnumberstring(Channel) {
+			return ""
+		}
 	}
 	CH := GetChannel(Channel, GG)
 	if strings.ToLower(CH.Type) == "voice" {
