@@ -2,6 +2,7 @@ token
 bot/bot.exe
 bot/PrimeGuild 
 bot/Notifiers 
+bot/debug/**
 *.GLD
 Notifiers
 PrimeGuild
