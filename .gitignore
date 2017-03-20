@@ -12,5 +12,5 @@ bot/log.txt
 bot/log.txt
 .idea/**
 client/*.inf
-.DS_Store
+*.DS_Store
 *.png

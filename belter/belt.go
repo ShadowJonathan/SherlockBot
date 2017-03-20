@@ -33,6 +33,7 @@ type Sherlock struct {
 	Notifiers     []string
 	PrimeSuspects []string
 	LoopCooldown  time.Duration
+	cl            *ChatLog
 }
 
 // Vars after this
@@ -473,6 +474,7 @@ func BBReady(s *discordgo.Session, r *discordgo.Ready) {
 	sh.OwnID = r.User.ID
 	sh.OwnAV = r.User.Avatar
 	sh.OwnName = r.User.Username
+	go sh.cl.work()
 	if isloaded {
 		fmt.Println("Reconnected!")
 		Log("RECONNECT")
@@ -491,6 +493,15 @@ func BBCreateMessage(Ses *discordgo.Session, MesC *discordgo.MessageCreate) {
 			ProcessCMD(Mes.Content[1:], MesC.Message, sh.Notifiers)
 		}
 	}
+	sh.cl.Mess <- Mes
+}
+
+func MESEDIT(Ses *discordgo.Session, MesE *discordgo.MessageUpdate) {
+	sh.cl.Edits <- MesE.Message
+}
+
+func MESDEL(Ses *discordgo.Session, MesD *discordgo.MessageDelete) {
+	sh.cl.Deletes <- MesD.ID
 }
 
 // misc funx
@@ -803,7 +814,9 @@ func Initialize(Token string) (bool, bool) {
 		Stop:         false,
 		StopLoop:     false,
 		LoopCooldown: 150 * time.Second, // 150 seconds, normally
+		cl:           new(ChatLog),
 	}
+	sh.cl.init()
 	sh.dg, err = discordgo.New(Token)
 	if err != nil {
 		fmt.Println("Discord Session error, check token, error message: " + err.Error())
@@ -812,6 +825,8 @@ func Initialize(Token string) (bool, bool) {
 	// handlers
 	sh.dg.AddHandler(BBReady)
 	sh.dg.AddHandler(BBCreateMessage)
+	sh.dg.AddHandler(MESEDIT)
+	sh.dg.AddHandler(MESDEL)
 
 	fmt.Println("SH: Handlers installed")
 
@@ -851,6 +866,7 @@ func Initialize(Token string) (bool, bool) {
 	sh.StopLoop = true
 	fmt.Println("SH: Sherlock stopping...")
 	sh.dg.Close()
+	sh.cl.Save()
 	return restart, upgrade
 }
 
