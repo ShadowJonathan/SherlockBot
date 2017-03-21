@@ -493,12 +493,12 @@ func BBReady(s *discordgo.Session, r *discordgo.Ready) {
 
 func BBCreateMessage(Ses *discordgo.Session, MesC *discordgo.MessageCreate) {
 	Mes := MesC.Message
+	sh.cl.Mess <- Mes
 	if Mes.Content != "" {
 		if Mes.Content[0] == '!' {
 			ProcessCMD(Mes.Content[1:], MesC.Message, sh.Notifiers)
 		}
 	}
-	sh.cl.Mess <- Mes
 }
 
 func MESEDIT(Ses *discordgo.Session, MesE *discordgo.MessageUpdate) {

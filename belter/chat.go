@@ -368,7 +368,12 @@ func (cl *ChatLog) Save() {
 				fmt.Println("Error unmarchaling dumpfile,", err)
 			}
 		}
-		CC.Messages = append(CC.Messages, AppendtoDump...)
+		CC.Messages = AppendtoDump
+		var MIDs []string
+		for _, m := range CC.Messages {
+			MIDs = append(MIDs, m.ID)
+		}
+		CC.SavedIDs = MIDs
 		data, _ := json.Marshal(CC)
 		DumpSave.Data = data
 		DumpSave.Save = true
