@@ -1,14 +1,21 @@
 package Belt
 
-import "time"
-import "github.com/bwmarrin/discordgo"
-import "fmt"
-import "io/ioutil"
-import "os"
-import "strings"
-import "strconv"
-import "encoding/json"
-import "sync"
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"errors"
+
+	"runtime/debug"
+
+	"github.com/bwmarrin/discordgo"
+)
 
 type ChatLog struct {
 	sync.Mutex
@@ -437,4 +444,192 @@ type BufferChunk struct {
 type CLSettings struct {
 	Autologafter time.Time `json:"ALA"`
 	ScrubAmount  int
+}
+
+type ChatBufferResolve struct {
+	ResolveChat
+	TotalBuffer []*Chatmessage
+	Chs         map[string]*ChannelBuffer
+	//Gs          map[string]*GuildDetail
+	AssetPrefix string
+	Chatlogpath string
+	Detailed    bool
+}
+
+type ResolveChat struct {
+	TempBuffer []*Chatmessage
+	TempSolved map[string][]*CompressedMessage
+	Orig       *ChatBufferResolve
+}
+
+type ChannelBuffer struct {
+	Messages []*CompressedMessage
+	Count    int
+	Name     string
+	Private  bool
+}
+
+/*
+type ChannelDetail struct {
+	Topic       string
+	Permissions map[string]*DetailOR
+	Position    int
+}
+
+
+type GuildDetail struct {
+	Channels map[int]string
+}
+
+type DetailOR struct {
+	Type  string
+	Deny  int
+	Allow int
+}
+*/
+
+type CompressedMessage struct {
+	TopDown  string               `json:"TD"`
+	Versions map[time.Time]string `json:"Vs,omitempty"`
+	Del      bool                 `json:"D,omitempty"`
+	Time     time.Time            `json:"T"`
+	Author   string               `json:"Au"`
+	Detail   *MessageDetail       `json:"Det,omitempty"`
+	ID       string               `json:",omitempty"`
+}
+
+type MessageDetail struct {
+	DeleteTime   time.Time          `json:"DT,omitempty"`
+	Capturedlive bool               `json:"CL,omitempty"`
+	LiveEdits    map[time.Time]bool `json:"LE,omitempty"`
+}
+
+func (c *ChatBufferResolve) Assetize(CLP string, Aprefix string, Detailed bool) error {
+	if CLP == "" {
+		return errors.New("No CLP defined")
+	} else if Aprefix == "" {
+		Aprefix = "assets"
+	}
+	sh.cl.Save()
+	sh.cl.Mutex.Lock()
+	defer sh.cl.Mutex.Unlock()
+	defer func() {
+		err := recover()
+		if err != nil {
+			fmt.Println("Error parsing assets:", err, "\n"+string(debug.Stack()))
+		}
+	}()
+	c.AssetPrefix = Aprefix
+	c.Chatlogpath = CLP
+	c.Detailed = Detailed
+	c.init()
+	err := c.load()
+	if err != nil {
+		return err
+	}
+	if Err := c.ResolveChat.Work(); Err != nil {
+		return Err
+	}
+	if Err := c.store(); Err != nil {
+		return Err
+	}
+	return nil
+}
+
+func (c *ChatBufferResolve) init() {
+	c.Chs = make(map[string]*ChannelBuffer)
+	c.ResolveChat.Orig = c
+	c.ResolveChat.TempSolved = make(map[string][]*CompressedMessage)
+}
+
+func (c *ChatBufferResolve) load() error {
+	chatdir, err := ioutil.ReadDir(c.Chatlogpath)
+	if err != nil {
+		return errors.New("Error loading CLF")
+	}
+	for _, f := range chatdir {
+		if !f.IsDir() {
+			n := strings.Split(f.Name(), "_")
+			if len(n) == 4 && n[0] == "CC" {
+				var T = &BufferChunk{}
+				d, _ := ioutil.ReadFile(c.Chatlogpath + "/" + f.Name())
+				err := json.Unmarshal(d, T)
+				if err != nil {
+					return errors.New("Error loading from file " + f.Name() + ": " + err.Error())
+				}
+				c.TotalBuffer = append(c.TotalBuffer, T.Messages...)
+			}
+		}
+	}
+	return nil
+}
+
+func (c *ChatBufferResolve) store() error {
+	for channel, mss := range c.Chs {
+		var Path string
+		if mss.Private {
+			Path = c.AssetPrefix + "/DMs/" + channel + " - " + mss.Name
+		} else {
+			Path = c.AssetPrefix + "/" + channel + " - " + mss.Name
+		}
+		os.MkdirAll(Path, 0777)
+		var days = make(map[int][]*CompressedMessage)
+		for _, mc := range mss.Messages {
+			days[mc.Time.YearDay()] = append(days[mc.Time.YearDay()], mc)
+		}
+		for day, messages := range days {
+			d, err := json.Marshal(messages)
+			if err != nil {
+				return errors.New("Error parsing json data: " + err.Error())
+			}
+			err = ioutil.WriteFile(Path+"/"+strconv.Itoa(day)+"-messages.cpm", d, 0777)
+			if err != nil {
+				return errors.New("Error saving file " + Path + "/" + strconv.Itoa(day) + "-messages.cpm: " + err.Error())
+			}
+		}
+	}
+	return nil
+}
+
+func (r *ResolveChat) Work() error {
+	Mess := r.Orig.TotalBuffer
+	for _, m := range Mess {
+		M := &CompressedMessage{
+			TopDown: m.TopView,
+			Del:     m.Deleted,
+			Time:    m.TimeStamp,
+			Author:  m.Author,
+			ID:      m.ID,
+		}
+		if len(m.Edits) > 0 {
+			M.Versions = make(map[time.Time]string)
+			M.Versions[m.TimeStamp] = m.Orig
+			for _, e := range m.Edits {
+				M.Versions[e.At] = e.Edit
+			}
+		}
+		r.TempSolved[m.Channel] = append(r.TempSolved[m.Channel], M)
+	}
+	for ch, ms := range r.TempSolved {
+		C, err := sh.dg.Channel(ch)
+		if err != nil {
+			r.Orig.Chs[ch] = &ChannelBuffer{
+				Messages: ms,
+				Name:     "ERR",
+				Private:  false,
+				Count:    len(ms),
+			}
+		} else {
+			if C.Name == "" {
+				C.Name = "ERRNONAME"
+			}
+			r.Orig.Chs[ch] = &ChannelBuffer{
+				Messages: ms,
+				Name:     C.Name,
+				Private:  C.IsPrivate,
+				Count:    len(ms),
+			}
+		}
+	}
+	return nil
 }

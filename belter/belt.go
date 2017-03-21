@@ -772,6 +772,14 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 	case "backlog":
 		sh.cl.backlog()
 		SendMessage(M.ChannelID, "`Saved some back-log`", Notifiers)
+	case "assetize":
+		AS := new(ChatBufferResolve)
+		err := AS.Assetize(SecArg, thirdArg, false)
+		if err != nil {
+			SendMessage(M.ChannelID, "`Error: "+err.Error()+"`", Notifiers)
+		} else {
+			SendMessage(M.ChannelID, "`Assets made`", Notifiers)
+		}
 	}
 }
 
