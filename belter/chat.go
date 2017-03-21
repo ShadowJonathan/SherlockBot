@@ -621,7 +621,11 @@ func (r *ResolveChat) Work() error {
 			}
 		} else {
 			if C.Name == "" {
-				C.Name = "ERRNONAME"
+				if C.IsPrivate {
+					C.Name = C.Recipient.Username
+				} else {
+					C.Name = "ERRNONAME"
+				}
 			}
 			r.Orig.Chs[ch] = &ChannelBuffer{
 				Messages: ms,
