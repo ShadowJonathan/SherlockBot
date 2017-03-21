@@ -374,7 +374,7 @@ func GRstring(role string) (string, string) {
 
 }
 
-func SendMessage(Channel string, Message string, Priviledged []string) bool {
+func SendMessage(Channel string, Message string, Priviledged []string) (bool, string, string) {
 	var ok bool
 	ok = false
 	for _, AN := range Priviledged {
@@ -383,10 +383,16 @@ func SendMessage(Channel string, Message string, Priviledged []string) bool {
 		}
 	}
 	if !ok {
-		return false
+		fmt.Println("Permission denied for " + Channel)
+		return false, "", ""
 	}
-	sh.dg.ChannelMessageSend(Channel, Message)
-	return true
+	m, err := sh.dg.ChannelMessageSend(Channel, Message)
+	if err != nil {
+		fmt.Println("Err parsing message to "+Channel+" from sending:", err)
+		return true, "", ""
+	} else {
+		return true, m.ID, Channel
+	}
 }
 
 func GetGLDfile(GID string) (*GuildInfo, error) {

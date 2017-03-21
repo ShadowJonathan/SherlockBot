@@ -418,7 +418,12 @@ func ResumeCheck(Gid string) *LastChangeStatus {
 	}
 	IsEqual, NewGuild, AllChange := CheckChange(G, Gid)
 	for _, N := range notifiers {
-		SendMessage(N, "Sherlock's out of 221b, ready for some investigation!", sh.Notifiers)
+		_, m, ch := SendMessage(N, "Sherlock's out of 221b, ready for some investigation!", sh.Notifiers)
+		if IsEqual {
+			go func() {}()
+			time.Sleep(30 * time.Second)
+			sh.dg.ChannelMessageDelete(ch, m)
+		}
 	}
 	if !IsEqual {
 		Responses := AppendChange(LastCheck.GI.g, NewGuild, AllChange)
@@ -517,6 +522,7 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 			fmt.Println("Panicked at ProcessCMD")
 		}
 	}()
+	fmt.Println("Processing", CMD)
 	Commands := getCMD(CMD)
 	var SecArg string = ""
 	if len(Commands) > 1 {
@@ -760,6 +766,12 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 		} else {
 			SendMessage(M.ChannelID, "`"+U.User.Username+" is not a (visible) Sherlock.`", Notifiers)
 		}
+	case "savechat":
+		sh.cl.Save()
+		SendMessage(M.ChannelID, "`Saved chat`", Notifiers)
+	case "backlog":
+		sh.cl.backlog()
+		SendMessage(M.ChannelID, "`Saved some back-log`", Notifiers)
 	}
 }
 

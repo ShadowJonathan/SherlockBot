@@ -12,10 +12,12 @@ import "sync"
 
 type ChatLog struct {
 	sync.Mutex
-	Buffer  map[string]*Chatmessage // IDS->messages
-	Mess    chan *discordgo.Message // fresh messages
-	Edits   chan *discordgo.Message
-	Deletes chan string
+	Buffer   map[string]*Chatmessage // IDS->messages
+	Mess     chan *discordgo.Message // fresh messages
+	Edits    chan *discordgo.Message
+	Deletes  chan string
+	Backlog  chan *Chatmessage
+	Settings *CLSettings
 }
 
 const CHATERR = ">ERR<"
@@ -25,16 +27,77 @@ func (cl *ChatLog) init() {
 	cl.Mess = make(chan *discordgo.Message, 100)
 	cl.Edits = make(chan *discordgo.Message, 100)
 	cl.Deletes = make(chan string, 100)
+	cl.Backlog = make(chan *Chatmessage, 1000)
+	cl.loadsettings()
 }
 
-/*
-func (cl *ChatLog) backlog() {
-	for _, g := range sh.dg.State.Guilds {
-		for _, c := range g.Channels {
+func (cl *ChatLog) loadsettings() {
+	data, err := ioutil.ReadFile("chatlog/sett.json")
+	cl.Settings = &CLSettings{}
+	if err != nil {
+		cl.Settings = &CLSettings{
+			Autologafter: time.Now(),
+			ScrubAmount:  1000,
+		}
+	} else {
+		err = json.Unmarshal(data, cl.Settings)
+		if err != nil {
+			fmt.Println("Error unmarshalling CL settings:", err)
 		}
 	}
 }
-*/
+
+func (cl *ChatLog) backlog() {
+	var count int
+	for _, g := range sh.dg.State.Guilds {
+	CH:
+		for _, c := range g.Channels {
+			var latestid string
+			for count < cl.Settings.ScrubAmount {
+				mess, err := sh.dg.ChannelMessages(c.ID, 100, latestid, "")
+				if err != nil {
+					fmt.Println("Error processing backlog:", err)
+				}
+				for _, m := range mess {
+					if ots, _ := m.Timestamp.Parse(); ots.Unix() < cl.Settings.Autologafter.Unix() {
+						break CH
+					}
+					sm, ok := cl.search(m.ID)
+					if ok {
+						if sm.TopView != m.Content {
+							sm.TopView = m.Content
+							ts, _ := m.EditedTimestamp.Parse()
+							sm.Edits = append(sm.Edits, &MessageEdit{
+								At:   ts,
+								Edit: m.Content,
+								Live: false,
+							})
+							cl.Backlog <- sm
+							count++
+						}
+					} else {
+						ts, err := m.EditedTimestamp.Parse()
+						ots, _ := m.Timestamp.Parse()
+						if err != nil {
+							cl.Backlog <- &Chatmessage{Orig: m.Content, TimeStamp: ots, TopView: m.Content, ID: m.ID, Author: m.Author.ID, Channel: m.ChannelID, Live: false}
+						} else {
+							var M = &Chatmessage{Orig: CHATERR, TimeStamp: ots, TopView: m.Content, ID: m.ID, Author: m.Author.ID, Channel: m.ChannelID, Live: false}
+							M.Edits = append(M.Edits, &MessageEdit{
+								At:   ts,
+								Edit: m.Content,
+								Live: false,
+							})
+							cl.Backlog <- M
+						}
+					}
+				}
+			}
+			if count >= cl.Settings.ScrubAmount {
+				return
+			}
+		}
+	}
+}
 
 func (cl *ChatLog) work() {
 	go cl.saveloop()
@@ -103,6 +166,7 @@ func (cl *ChatLog) work() {
 					Orig:       CHATERR,
 					Live:       false,
 					Deleted:    true,
+					ID:         d,
 					DeleteTime: time.Now(),
 				}
 				cl.Mutex.Unlock()
@@ -113,6 +177,11 @@ func (cl *ChatLog) work() {
 				cl.Buffer[d] = origm
 				cl.Mutex.Unlock()
 			}
+
+		case bl := <-cl.Backlog:
+			cl.Mutex.Lock()
+			cl.Buffer[bl.ID] = bl
+			cl.Mutex.Unlock()
 		}
 	}
 }
@@ -143,7 +212,7 @@ FINDLOOP:
 						fmt.Println("Error reading file "+f.Name()+",", err)
 						return &Chatmessage{}, false
 					}
-					var CC *BufferChunk
+					var CC = &BufferChunk{}
 					err = json.Unmarshal(d, CC)
 					if err != nil {
 						fmt.Println("Error unmarshalling file "+f.Name()+",", err)
@@ -176,22 +245,40 @@ func (cl *ChatLog) Save() {
 	var Saves = make(map[string]SaveFile)
 	var NewSave SaveFile
 	var AppendtoNew []*Chatmessage
+	var AppendtoDump []*Chatmessage
+	var DumpSave SaveFile
+	var DS bool
 	chatdir, err := ioutil.ReadDir("chatlog")
 	if err != nil {
 		os.Mkdir("chatlog", 0777)
 	}
+	var lowestid int
 	for _, f := range chatdir {
 		if !f.IsDir() {
 			n := strings.Split(f.Name(), "_")
-			if len(n) == 4 && n[0] == "CC" {
+			if len(n) == 4 && n[0] == "CC" && n[1] != "DF" {
 				F, _ := strconv.Atoi(n[1])
 				T, _ := strconv.Atoi(n[2])
+				if F < lowestid || lowestid == 0 {
+					lowestid = F
+				}
 				d, _ := ioutil.ReadFile("chatlog/" + f.Name())
 				Saves[f.Name()] = SaveFile{
 					from: F,
 					to:   T,
 					Name: f.Name(),
-					Data: d}
+					Data: d,
+				}
+			} else if len(n) == 4 && n[0] == "CC" && n[1] == "DF" {
+				T, _ := strconv.Atoi(n[2])
+				lowestid = T
+				d, _ := ioutil.ReadFile("chatlog/" + f.Name())
+				DumpSave = SaveFile{
+					to:   T,
+					Data: d,
+					Name: f.Name(),
+				}
+				DS = true
 			}
 		}
 	}
@@ -223,7 +310,11 @@ func (cl *ChatLog) Save() {
 			}
 		}
 		if !Found {
-			AppendtoNew = append(AppendtoNew, m)
+			if ID < lowestid {
+				AppendtoDump = append(AppendtoDump, m)
+			} else {
+				AppendtoNew = append(AppendtoNew, m)
+			}
 		}
 	}
 	if len(AppendtoNew) != 0 {
@@ -267,10 +358,40 @@ func (cl *ChatLog) Save() {
 		NewSave.Data = data
 		Saves[NewSave.Name] = NewSave
 	}
+	if len(AppendtoDump) != 0 {
+		var CC = new(BufferChunk)
+		if !DS {
+			CC = &BufferChunk{}
+		} else {
+			err := json.Unmarshal(DumpSave.Data, CC)
+			if err != nil {
+				fmt.Println("Error unmarchaling dumpfile,", err)
+			}
+		}
+		CC.Messages = append(CC.Messages, AppendtoDump...)
+		data, _ := json.Marshal(CC)
+		DumpSave.Data = data
+		DumpSave.Save = true
+		DumpSave.Name = fmt.Sprintf("CC_DF_%d_buff", lowestid)
+		Saves[DumpSave.Name] = DumpSave
+	}
 	for _, sf := range Saves {
 		if sf.Save {
-			ioutil.WriteFile("chatlog/"+sf.Name+".clg", sf.Data, 0777)
+			if !strings.Contains(sf.Name, ".clg") {
+				ioutil.WriteFile("chatlog/"+sf.Name+".clg", sf.Data, 0777)
+			} else {
+				ioutil.WriteFile("chatlog/"+sf.Name, sf.Data, 0777)
+			}
 		}
+	}
+
+	cl.Buffer = make(map[string]*Chatmessage)
+
+	d, err := json.Marshal(cl.Settings)
+	if err == nil {
+		ioutil.WriteFile("chatlog/sett.json", d, 0777)
+	} else {
+		fmt.Println("Error Marshal-ing settings,", err)
 	}
 }
 
@@ -301,9 +422,14 @@ type MessageEdit struct {
 }
 
 type BufferChunk struct {
-	From     time.Time      `json:"F"`
+	From     time.Time      `json:"F,omitempty"`
 	To       time.Time      `json:"T"`
 	SavedIDs []string       `json:"AID"`
 	Messages []*Chatmessage `json:"Ms"`
 	LatestID string         `json:",omitempty"`
+}
+
+type CLSettings struct {
+	Autologafter time.Time `json:"ALA"`
+	ScrubAmount  int
 }
