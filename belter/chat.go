@@ -521,7 +521,6 @@ func (cl *ChatLog) search(ID string) (*Chatmessage, bool) {
 		return &Chatmessage{}, false
 	}
 	id, _ := strconv.Atoi(ID)
-FINDLOOP:
 	for _, f := range chatdir {
 		if !f.IsDir() {
 			n := strings.Split(f.Name(), "_")
@@ -545,7 +544,6 @@ FINDLOOP:
 							return m, true
 						}
 					}
-					break FINDLOOP
 				}
 			}
 		}
