@@ -371,10 +371,18 @@ func (cl *ChatLog) validate() {
 		haserror = true
 	}
 	if !haserror {
-		err = os.MkdirAll("chatlog", 0777)
-		if err != nil {
-			fmt.Println("Error while creating new folder:", err)
-			haserror = true
+		var C int
+		for {
+			err = os.MkdirAll("chatlog", 0777)
+			if err != nil && C > 3 {
+				fmt.Println("Error while creating new folder:", err)
+				haserror = true
+				break
+			} else if err != nil && C < 3 {
+				C++
+			} else if err == nil {
+				break
+			}
 		}
 	}
 	if haserror {
