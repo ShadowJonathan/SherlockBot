@@ -57,16 +57,22 @@ func (cl *ChatLog) loadsettings() {
 func (cl *ChatLog) backlog() {
 	cl.Save()
 	var count int
+	var amount = cl.Settings.ScrubAmount
+	fmt.Println("Backlogging with " + strconv.Itoa(cl.Settings.ScrubAmount) + " max")
 	for _, g := range sh.dg.State.Guilds {
 	CH:
 		for _, c := range g.Channels {
-			fmt.Println("Logging new channel:", c.Name)
+			fmt.Println("Logging new channel:", c.Name, count)
 			if c.Type != "text" {
 				fmt.Println("Is voice channel, skipping...")
 				continue
 			}
 			var latestid string
-			for count < cl.Settings.ScrubAmount {
+			for count < amount {
+				if count >= amount {
+					fmt.Println("Hit limit of backlogging")
+					return
+				}
 				mess, err := sh.dg.ChannelMessages(c.ID, 100, latestid, "")
 				if err != nil {
 					if strings.Contains(err.Error(), "HTTP 403") {
@@ -117,6 +123,7 @@ func (cl *ChatLog) backlog() {
 							})
 							cl.Backlog <- M
 						}
+						count++
 					}
 				}
 				latestid = strconv.Itoa(lowest)
@@ -127,7 +134,7 @@ func (cl *ChatLog) backlog() {
 					fmt.Println("No unknown messages found around", latestid)
 				}
 			}
-			if count >= cl.Settings.ScrubAmount {
+			if count >= amount {
 				fmt.Println("Hit limit of backlogging")
 				return
 			}
@@ -135,13 +142,13 @@ func (cl *ChatLog) backlog() {
 	}
 PC:
 	for _, c := range sh.dg.State.PrivateChannels {
-		fmt.Println("Logging new channel:", c.Name)
+		fmt.Println("Logging new channel:", c.Recipient.Username)
 		if c.Type != "text" {
 			fmt.Println("Is voice channel, skipping...")
 			continue
 		}
 		var latestid string
-		for count < cl.Settings.ScrubAmount {
+		for count < amount {
 			mess, err := sh.dg.ChannelMessages(c.ID, 100, latestid, "")
 			if err != nil {
 				fmt.Println("Error processing backlog:", err)
@@ -188,6 +195,7 @@ PC:
 						})
 						cl.Backlog <- M
 					}
+					count++
 				}
 			}
 			latestid = strconv.Itoa(lowest)
@@ -198,7 +206,7 @@ PC:
 				fmt.Println("No unknown messages found around", latestid)
 			}
 		}
-		if count >= cl.Settings.ScrubAmount {
+		if count >= amount {
 			fmt.Println("Hit limit of backlogging")
 			return
 		}
@@ -372,6 +380,10 @@ func (cl *ChatLog) validate() {
 	if haserror {
 		fmt.Println("Validate failed, restoring backup")
 		backdir, err := ioutil.ReadDir("backup")
+		if err != nil {
+			panic(err)
+		}
+		err = os.MkdirAll("chatlog", 0777)
 		if err != nil {
 			panic(err)
 		}
