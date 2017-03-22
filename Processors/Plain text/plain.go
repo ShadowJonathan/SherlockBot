@@ -203,7 +203,8 @@ func (s *stringify) str() {
 		if lastauthor == m.Author {
 			s.lines = append(s.lines, m.clang())
 		} else {
-			hourminutesecond := m.Time.Format("04:05:45")
+			h, min, sec := m.Time.Hour(), m.Time.Minute(), m.Time.Second()
+			hourminutesecond := fmt.Sprintf("%02d:%02d:%02d", h, min, sec)
 			y, mon, d := m.Time.Date()
 			daymonthyear := strconv.Itoa(d) + "-" + strconv.Itoa(int(mon)) + "-" + strconv.Itoa(y)
 			s.lines = append(s.lines, "\n"+s.AI.Users[m.Author]+" - "+hourminutesecond+" "+daymonthyear)
@@ -251,7 +252,8 @@ func (cm *CompressedMessage) clang() string {
 		if ver == cm.TopDown {
 			continue
 		} else {
-			hourminutesecond := t.Format("04:05:45")
+			h, min, sec := t.Hour(), t.Minute(), t.Second()
+			hourminutesecond := fmt.Sprintf("%02d:%02d:%02d", h, min, sec)
 			y, m, d := t.Date()
 			daymonthyear := strconv.Itoa(d) + "-" + strconv.Itoa(int(m)) + "-" + strconv.Itoa(y)
 			temp = append(temp, fmt.Sprintf("(Edit %s %s: %s)", hourminutesecond, daymonthyear, ver))
