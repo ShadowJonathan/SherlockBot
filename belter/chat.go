@@ -343,22 +343,61 @@ func (cl *ChatLog) validate() {
 
 	fmt.Println("Prepared all files")
 
+	os.Mkdir("backup", 0777)
+	for _, f := range chatdir {
+		if !f.IsDir() {
+			data, err := ioutil.ReadFile("chatlog/" + f.Name())
+			if err != nil {
+				panic(err)
+			}
+			err = ioutil.WriteFile("backup/"+f.Name(), data, 0777)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+	var haserror bool
 	err = os.RemoveAll("chatlog")
 	if err != nil {
 		fmt.Println("Error while deleting original folder:", err)
+		haserror = true
 	}
-	err = os.MkdirAll("chatlog", 0777)
-	if err != nil {
-		fmt.Println("Error while creating new folder:", err)
+	if !haserror {
+		err = os.MkdirAll("chatlog", 0777)
+		if err != nil {
+			fmt.Println("Error while creating new folder:", err)
+			haserror = true
+		}
 	}
+	if haserror {
+		fmt.Println("Validate failed, restoring backup")
+		backdir, err := ioutil.ReadDir("backup")
+		if err != nil {
+			panic(err)
+		}
+		for _, bf := range backdir {
+			if !bf.IsDir() {
+				data, err := ioutil.ReadFile("backup/" + bf.Name())
+				if err != nil {
+					panic(err)
+				}
+				err = ioutil.WriteFile("chatlog/"+bf.Name(), data, 0777)
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+	} else {
+		for _, file := range Savefiles {
+			ioutil.WriteFile("chatlog/"+file.Name, file.Data, 0777)
+		}
 
-	for _, file := range Savefiles {
-		ioutil.WriteFile("chatlog/"+file.Name, file.Data, 0777)
+		os.RemoveAll("backup")
+
+		ioutil.WriteFile("chatlog/sett.json", sett, 0777)
+
+		fmt.Println("Validate complete")
 	}
-
-	ioutil.WriteFile("chatlog/sett.json", sett, 0777)
-
-	fmt.Println("Validate complete")
 }
 
 func (cl *ChatLog) work() {
