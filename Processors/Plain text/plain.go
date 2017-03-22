@@ -1,8 +1,8 @@
 package main
 
 import (
-	"time"
 	"io/ioutil"
+	"time"
 )
 
 func main() {
@@ -14,7 +14,7 @@ func main() {
 	var thedir string
 	for _, f := range dir {
 		if f.IsDir() {
-subdir, err := ioutil.ReadDir(f.Name())
+			subdir, err := ioutil.ReadDir(f.Name())
 			if err != nil {
 				panic(err)
 			}
@@ -32,6 +32,13 @@ subdir, err := ioutil.ReadDir(f.Name())
 		}
 	}
 }
+
+/* format:
+Shadowjonathan - 08:40:10 22-3-2017
+    I didnt do that!
+(Edit 08:40:30 22-3-2017: wut)
+    hm? :3
+*/
 
 type assetinfo struct {
 	Channels map[string]string
