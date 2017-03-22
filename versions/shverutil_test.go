@@ -19,6 +19,9 @@ func TestUtilWerks(t *testing.T) {
 	fmt.Println()
 	fmt.Println(GetSHVersion(img))
 	out, err := os.Create("result.png")
+	if err != nil {
+		panic(err)
+	}
 	png.Encode(out, img)
 }
 

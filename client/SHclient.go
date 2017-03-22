@@ -54,7 +54,7 @@ func SetLogger() {
 	if err != nil {
 		ioutil.WriteFile("log.txt", []byte{}, 9001)
 	}
-	ERR := log.New(l, "SH: ", log.LstdFlags)
+	ERR = log.New(l, "SH: ", log.LstdFlags)
 }
 
 func launchbrowser() {

@@ -1,12 +1,13 @@
 package Belt
 
 import (
-	"../versions"
 	"image"
 	"image/color"
 	"image/png"
 	"net/http"
 	"os"
+
+	"../versions"
 )
 
 func HE(err error) {
@@ -22,6 +23,7 @@ func EncodefileBasic(file, dest string) {
 	HE(err)
 	img = EncodeBasic(img)
 	out, err := os.Create(dest)
+	HE(err)
 	png.Encode(out, img)
 }
 
@@ -49,6 +51,7 @@ func EncodefileVersion(file, dest string, ver versions.Version) {
 	HE(err)
 	img = EncodeVersion(img, ver)
 	out, err := os.Create(dest)
+	HE(err)
 	png.Encode(out, img)
 }
 

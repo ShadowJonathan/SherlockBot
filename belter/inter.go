@@ -1,11 +1,9 @@
 package Belt
 
 import (
-	"../versions"
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"github.com/bwmarrin/discordgo"
 	"image"
 	"image/jpeg"
 	"image/png"
@@ -13,6 +11,9 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+
+	"../versions"
+	"github.com/bwmarrin/discordgo"
 )
 
 func swap(broadcast bool, version bool) {
@@ -32,6 +33,7 @@ func swap(broadcast bool, version bool) {
 		b, err := os.Open("unedited.png")
 		HE(err)
 		img, _, err := image.Decode(b)
+		HE(err)
 		changeav(img)
 	}
 }

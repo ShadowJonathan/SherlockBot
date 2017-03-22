@@ -1,8 +1,9 @@
 package Belt
 
 import (
-	"github.com/bwmarrin/discordgo"
 	"time"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 type PermORChange struct {
@@ -15,10 +16,10 @@ type PermORChange struct {
 }
 
 type ChannelChange struct {
-	ID          string          `json:"ID"`
-	Name        bool            `json:"Name"`
-	Topic       bool            `json:"Topic"`
-	perms       bool            `json:"Perms"`
+	ID          string `json:"ID"`
+	Name        bool   `json:"Name"`
+	Topic       bool   `json:"Topic"`
+	perms       bool
 	Perms       []*PermORChange `json:"ORs"`
 	ExistCrisis bool            `json:"Ex,omitempty"`
 	Del         bool            `json:"Del,omitempty"`
@@ -67,10 +68,10 @@ type FullChangeStruct struct {
 }
 
 type GuildInfo struct {
-	g           *discordgo.Guild `json:"g"`
-	Lastcheck   TimeFormat       `json:"TimeForm"`
-	BotUP       bool             `json:"BU"`
-	NeedRestall bool             `json:"RESTALL"`
+	g           *discordgo.Guild
+	Lastcheck   TimeFormat `json:"TimeForm"`
+	BotUP       bool       `json:"BU"`
+	NeedRestall bool       `json:"RESTALL"`
 }
 
 type FullMention struct {

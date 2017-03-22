@@ -1,7 +1,6 @@
 package Belt
 
 import (
-	"../versions"
 	"fmt"
 	"image"
 	"image/png"
@@ -9,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"testing"
+
+	"../versions"
 )
 
 const this = "../belter/"
@@ -34,6 +35,7 @@ func TestPushVersion(t *testing.T) {
 	img = EncodeBasic(img)
 	img = EncodeVersion(img, versions.Version{0, 0, 2, 0})
 	out, err := os.Create("Encoded.png")
+	HE(err)
 	png.Encode(out, img)
 }
 

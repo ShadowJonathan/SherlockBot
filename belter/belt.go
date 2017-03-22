@@ -12,9 +12,10 @@ import (
 
 	"encoding/json"
 
+	"runtime/debug"
+
 	"../versions"
 	"github.com/bwmarrin/discordgo"
-	"runtime/debug"
 )
 
 type Version struct {
@@ -578,21 +579,21 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 			case 1:
 				SendMessage(M.ChannelID, "`You gave me no user to check! Use it like this: !getuser <ID>/<Name>(#<discriminator>) (-e)`\n`Use -e to make lower and uppercase count in the search`", sh.Notifiers)
 			case 2:
-				SendMessage(M.ChannelID, "`I couldnt find '"+Commands[1]+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have mispelled it, try <Name>(#<discriminator>) instead of an ID, or double-check what you (probably) pasted.`", sh.Notifiers)
+				SendMessage(M.ChannelID, "`I couldnt find '"+Commands[1]+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have misspelled it, try <Name>(#<discriminator>) instead of an ID, or double-check what you (probably) pasted.`", sh.Notifiers)
 			case 3:
 				if e {
 					TotS = strings.Join(Commands[1:len(Commands)-1], " ")
 				} else {
 					TotS = strings.Join(Commands[1:], " ")
 				}
-				SendMessage(M.ChannelID, "`I couldnt find '"+TotS+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have mispelled it, try <Name>(#<discriminator>) instead of just a name or nickname, or double-check what you typed.`", sh.Notifiers)
+				SendMessage(M.ChannelID, "`I couldnt find '"+TotS+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have misspelled it, try <Name>(#<discriminator>) instead of just a name or nickname, or double-check what you typed.`", sh.Notifiers)
 			case 4:
 				if e {
 					TotS = strings.Join(Commands[1:len(Commands)-2], " ")
 				} else {
 					TotS = strings.Join(Commands[1:], " ")
 				}
-				SendMessage(M.ChannelID, "`I couldnt find '"+TotS+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have mispelled it, try <Name>(#<discriminator>) instead of just a name or nickname, or double-check what you typed.`", sh.Notifiers)
+				SendMessage(M.ChannelID, "`I couldnt find '"+TotS+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have misspelled it, try <Name>(#<discriminator>) instead of just a name or nickname, or double-check what you typed.`", sh.Notifiers)
 			case 5:
 				SendMessage(M.ChannelID, "`Error 5, this is outside your hands, contact the owner of this bot immidiatly.`", sh.Notifiers)
 			case 6:
