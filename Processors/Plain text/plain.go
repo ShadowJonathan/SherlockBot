@@ -100,20 +100,22 @@ func main() {
 
 	for ch, folder := range DMchannels {
 		path := thedir + "/" + DMfolder + "/" + folder
-		privatewithdays[ch] = make(map[int]string)
 		localdir, err := ioutil.ReadDir(path)
 		if err != nil {
 			panic(err)
 		}
+		privatewithdays[ch] = make(map[int]string)
 		for _, file := range localdir {
 			s := strings.Split(file.Name(), "-")
 			n, err := strconv.Atoi(s[0])
 			if err != nil {
 				panic(err)
 			}
-			channelswithdays[ch][n] = file.Name()
+			privatewithdays[ch][n] = file.Name()
 		}
 	}
+
+	publicai = AI
 
 	res := getresolve(thedir, AI)
 
@@ -146,6 +148,7 @@ func (w *work) make() {
 			if err != nil {
 				panic(err)
 			}
+			w.cf.messages = &[]*CompressedMessage{}
 			err = json.Unmarshal(f, w.cf.messages)
 			if err != nil {
 				panic(err)
@@ -155,21 +158,28 @@ func (w *work) make() {
 			if err != nil {
 				panic(err)
 			}
-			ioutil.WriteFile("plain/"+w.orig.assetinfo.Channels[ch]+"/"+messagefile, w.cf.data, 0777)
+			ioutil.WriteFile("plain/"+w.orig.assetinfo.Channels[ch]+"/"+strings.Replace(messagefile, ".cpm", ".chat", -1), w.cf.data, 0777)
 		}
 	}
 }
 
+var publicai *assetinfo
+
 type stringify struct {
 	AI           *assetinfo
-	messages     []*CompressedMessage
+	messages     *[]*CompressedMessage
 	lines        []string
 	completeline string
 	data         []byte
 }
 
 func (s *stringify) parse() {
+	s.lines = []string{}
+	s.data = []byte{}
+	s.completeline = ""
 	s.str()
+	s.fullstr()
+	s.d()
 }
 
 func (s *stringify) str() {
@@ -178,30 +188,65 @@ func (s *stringify) str() {
 	for {
 		var theid int
 		var idint int
-		for I, m := range s.messages {
+		for I, m := range *s.messages {
 			i, _ := strconv.Atoi(m.ID)
-			if (i < theid || theid == 0) && theid > lastid {
+			if (i < theid || theid == 0) && i > lastid {
 				theid = i
 				idint = I
 			}
 		}
-
-		m := s.messages[idint]
+		if theid == 0 {
+			break
+		}
+		mess := *s.messages
+		m := mess[idint]
 		if lastauthor == m.Author {
-			s.lines = append(s.lines, m.clang())
+			s.lines = append(s.lines, strings.Replace(m.clang(), "\n", "\n    ", -1))
 		} else {
 			hourminutesecond := m.Time.Format("04:05:45")
 			y, mon, d := m.Time.Date()
 			daymonthyear := strconv.Itoa(d) + "-" + strconv.Itoa(int(mon)) + "-" + strconv.Itoa(y)
-			s.lines = append(s.lines, m.Author+" - "+hourminutesecond+" "+daymonthyear)
+			s.lines = append(s.lines, "\n"+s.AI.Users[m.Author]+" - "+hourminutesecond+" "+daymonthyear)
+			s.lines = append(s.lines, strings.Replace(m.clang(), "\n", "\n    ", -1))
+			lastauthor = m.Author
 		}
+		lastid = theid
 	}
 
 }
 
 func (cm *CompressedMessage) clang() string {
 	var temp []string
-	temp = append(temp, "    "+cm.TopDown)
+	var message = "    " + cm.TopDown
+	divide := strings.Split(message, "<@")
+	var replace = make(map[string]string)
+	if len(divide) > 1 {
+		for i, div := range divide {
+			if i == 0 {
+				continue
+			}
+			var id string
+			var readnext int
+			for {
+				if div[readnext] == '>' {
+					break
+				} else {
+					readnext++
+				}
+			}
+			id = div[:readnext]
+			user, ok := publicai.Users[id]
+			if !ok {
+				user = "ERR"
+			}
+			replace["<@"+id+">"] = "@" + user
+		}
+		fmt.Println(replace)
+	}
+	for from, to := range replace {
+		message = strings.Replace(message, from, to, 1)
+	}
+	temp = append(temp, message)
 	for t, ver := range cm.Versions {
 		if ver == cm.TopDown {
 			continue

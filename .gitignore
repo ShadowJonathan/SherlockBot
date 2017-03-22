@@ -17,3 +17,4 @@ client/*.inf
 *.png
 *.cpm
 **/asset.info
+*.chat
