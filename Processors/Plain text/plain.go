@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"strings"
 	"time"
 )
 
@@ -30,6 +33,40 @@ func main() {
 				break
 			}
 		}
+	}
+	if thedir == "" {
+		fmt.Println("No usable asset directory found")
+		return
+	}
+	var DMfolder string
+	var channels = make(map[string]string)
+	var AI = new(assetinfo)
+	assetdir, err := ioutil.ReadDir(thedir)
+	if err != nil {
+		panic(err)
+	}
+	for _, f := range assetdir {
+		if f.Name() == "DMs" && f.IsDir() {
+			DMfolder = f.Name()
+		} else if !f.IsDir() && f.Name() == "asset.info" {
+			data, err := ioutil.ReadFile(thedir + "/" + f.Name())
+			if err != nil {
+				panic(err)
+			}
+			err = json.Unmarshal(data, AI)
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			if f.IsDir() {
+				s := strings.Split(f.Name(), " - ")
+				channels[s[0]] = f.Name()
+			}
+		}
+	}
+	for ch, folder := range channels {
+		path := thedir + "/" + folder
+
 	}
 }
 
