@@ -201,13 +201,13 @@ func (s *stringify) str() {
 		mess := *s.messages
 		m := mess[idint]
 		if lastauthor == m.Author {
-			s.lines = append(s.lines, strings.Replace(m.clang(), "\n", "\n    ", -1))
+			s.lines = append(s.lines, m.clang())
 		} else {
 			hourminutesecond := m.Time.Format("04:05:45")
 			y, mon, d := m.Time.Date()
 			daymonthyear := strconv.Itoa(d) + "-" + strconv.Itoa(int(mon)) + "-" + strconv.Itoa(y)
 			s.lines = append(s.lines, "\n"+s.AI.Users[m.Author]+" - "+hourminutesecond+" "+daymonthyear)
-			s.lines = append(s.lines, strings.Replace(m.clang(), "\n", "\n    ", -1))
+			s.lines = append(s.lines, m.clang())
 			lastauthor = m.Author
 		}
 		lastid = theid
@@ -218,6 +218,7 @@ func (s *stringify) str() {
 func (cm *CompressedMessage) clang() string {
 	var temp []string
 	var message = "    " + cm.TopDown
+	message = strings.Replace(message, "\n", "\n    ", -1)
 	divide := strings.Split(message, "<@")
 	var replace = make(map[string]string)
 	if len(divide) > 1 {
