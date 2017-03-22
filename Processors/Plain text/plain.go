@@ -242,7 +242,6 @@ func (cm *CompressedMessage) clang() string {
 			}
 			replace["<@"+id+">"] = "@" + user
 		}
-		fmt.Println(replace)
 	}
 	for from, to := range replace {
 		message = strings.Replace(message, from, to, 1)
