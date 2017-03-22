@@ -213,6 +213,7 @@ func (cl *ChatLog) validate() {
 		os.Mkdir("chatlog", 0777)
 		return
 	}
+	sett, _ := ioutil.ReadFile("chatlog/sett.json")
 	var All = make(map[string]*Chatmessage)
 	var Dumptill int
 	for _, f := range chatdir {
@@ -354,6 +355,8 @@ func (cl *ChatLog) validate() {
 	for _, file := range Savefiles {
 		ioutil.WriteFile("chatlog/"+file.Name, file.Data, 0777)
 	}
+
+	ioutil.WriteFile("chatlog/sett.json", sett, 0777)
 
 	fmt.Println("Validate complete")
 }
@@ -777,6 +780,9 @@ func (c *ChatBufferResolve) Assetize(CLP string, Aprefix string, Detailed bool) 
 	if Err := c.store(); Err != nil {
 		return Err
 	}
+	if Err := c.inform(); Err != nil {
+		return Err
+	}
 	return nil
 }
 
@@ -837,6 +843,72 @@ func (c *ChatBufferResolve) store() error {
 		}
 	}
 	return nil
+}
+
+func (c *ChatBufferResolve) inform() error {
+	var users = make(map[string]string)
+	var channels = make(map[string]string)
+
+	for _, c := range c.TotalBuffer {
+		if c.Author == "" || c.Channel == "" {
+			continue
+		}
+		users[c.Author] = ""
+		channels[c.Channel] = ""
+	}
+
+	for u := range users {
+		var U *discordgo.User
+		var err error
+		for _, g := range sh.dg.State.Guilds {
+			var GM *discordgo.Member
+			GM, err = sh.dg.State.Member(g.ID, u)
+			if err == nil {
+				U = GM.User
+				break
+			}
+		}
+		var name string
+		if err != nil {
+			fmt.Println("Tried to find user, got error", err)
+			name = "ERR"
+		} else {
+			name = U.Username
+		}
+		users[u] = name
+	}
+
+	for c := range channels {
+		CH, err := sh.dg.State.Channel(c)
+		var name string
+		if err != nil {
+			fmt.Println("Tried to find channel, got error", err)
+			name = "ERR"
+		} else {
+			if CH.IsPrivate {
+				name = CH.Recipient.Username
+			} else {
+				name = CH.Name
+			}
+		}
+		channels[c] = name
+	}
+	ai := new(assetinfo)
+	ai.Channels = channels
+	ai.Users = users
+
+	data, err := json.Marshal(ai)
+	if err != nil {
+		panic(err)
+	} else {
+		ioutil.WriteFile(c.AssetPrefix+"/asset.info", data, 0777)
+	}
+	return nil
+}
+
+type assetinfo struct {
+	Channels map[string]string
+	Users    map[string]string
 }
 
 func (r *ResolveChat) Work() error {
