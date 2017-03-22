@@ -34,8 +34,8 @@ type encodetest struct {
 
 func (e *encodetest) At(x, y int) color.Color {
 	if x >= e.Image.Bounds().Dx()-5 && y >= e.Image.Bounds().Dy()-5 {
-		if x - (e.Image.Bounds().Dx()-5) == 3 && y - (e.Image.Bounds().Dy()-5) == 4 {
-			return color.RGBA{0,0,0,255}
+		if x-(e.Image.Bounds().Dx()-5) == 3 && y-(e.Image.Bounds().Dy()-5) == 4 {
+			return color.RGBA{0, 0, 0, 255}
 		}
 		return color.RGBA{255, 255, 255, 255}
 	}

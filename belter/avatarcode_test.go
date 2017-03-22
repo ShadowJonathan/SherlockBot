@@ -22,7 +22,7 @@ func TestEncodefileVersion(t *testing.T) {
 }
 
 func TestDecodeFile(t *testing.T) {
-	ver := DecodeFile(this+"SH.png")
+	ver := DecodeFile(this + "SH.png")
 	fmt.Println(ver)
 }
 
@@ -45,10 +45,10 @@ func TestDecodeUrl(t *testing.T) {
 }
 
 func TestVerPix(t *testing.T) {
-	ver := versions.Version{0,4,8,0}
-	for y := 0; y < 5;y++ {
+	ver := versions.Version{0, 4, 8, 0}
+	for y := 0; y < 5; y++ {
 		for x := 0; x < 5; x++ {
-			fmt.Println(versions.GetVerPix(ver,x,y))
+			fmt.Println(versions.GetVerPix(ver, x, y))
 		}
 	}
 }

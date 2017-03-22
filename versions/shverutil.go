@@ -40,16 +40,16 @@ func convert(c []color.Color) int {
 	}
 	var w int = 0
 	if c[4] == black || WB(c[4]) == black {
-		w = w+1
+		w = w + 1
 	}
 	if c[3] == black || WB(c[3]) == black {
-		w = w+2
+		w = w + 2
 	}
 	if c[2] == black || WB(c[2]) == black {
-		w = w+4
+		w = w + 4
 	}
 	if c[1] == black || WB(c[1]) == black {
-		w = w+8
+		w = w + 8
 	}
 	return w
 }

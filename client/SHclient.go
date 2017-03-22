@@ -19,12 +19,12 @@ var info *clientinfo
 var dg *discordgo.Session
 
 type clientinfo struct {
-	Logcreds bool
-	ID       string
-	Password string
-	Email    string
-	Sherlock string //ID of the sherlock in contact
-	connected bool
+	Logcreds     bool
+	ID           string
+	Password     string
+	Email        string
+	Sherlock     string //ID of the sherlock in contact
+	connected    bool
 	initialready *discordgo.Ready
 }
 
@@ -76,26 +76,26 @@ var readydata chan *discordgo.Ready
 
 func login(w http.ResponseWriter, r *http.Request) {
 	if info.Logcreds {
-	if !info.connected {
-		var err error
-		dg, err = discordgo.New(info.Email, info.Password)
-		readydata = make(chan *discordgo.Ready)
-		if err != nil {
-			ERR.Fatal(err)
+		if !info.connected {
+			var err error
+			dg, err = discordgo.New(info.Email, info.Password)
+			readydata = make(chan *discordgo.Ready)
+			if err != nil {
+				ERR.Fatal(err)
+			}
+			dg.AddHandler(func(s *discordgo.Session, m *discordgo.Ready) {
+				fmt.Println("ready!")
+				readydata <- m
+			})
+			dg.Open()
+			ready := <-readydata
+			rd, _ := json.Marshal(ready)
+			info.initialready = ready
+			w.Write(rd)
+			info.connected = true
+		} else {
+			rd, _ := json.Marshal(info.initialready)
+			w.Write(rd)
 		}
-		dg.AddHandler(func(s *discordgo.Session, m *discordgo.Ready) {
-			fmt.Println("ready!")
-			readydata <- m
-		})
-		dg.Open()
-		ready := <-readydata
-		rd, _ := json.Marshal(ready)
-		info.initialready = ready
-		w.Write(rd)
-		info.connected = true
-	} else {
-		rd, _ := json.Marshal(info.initialready)
-		w.Write(rd)
-	}
 	}
 }

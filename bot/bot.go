@@ -23,9 +23,9 @@ func main() {
 			ioutil.WriteFile("../retcmd.botboot", compilebotboot(false), 0777)
 			return
 		}
-		
+
 		restart, upgrade := Belt.Initialize(strings.TrimSpace(string(token)))
-		
+
 		if !restart && !upgrade {
 			ioutil.WriteFile("../retcmd.botboot", compilebotboot(upgrade), 0777)
 			return

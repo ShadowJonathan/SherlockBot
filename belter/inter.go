@@ -93,7 +93,7 @@ func sweep() map[string]versions.Version {
 			}
 
 			for i := 0; i < len(g.Members); i++ {
-				for s, ver := range <- c {
+				for s, ver := range <-c {
 					ids[s] = ver
 				}
 			}
@@ -101,16 +101,13 @@ func sweep() map[string]versions.Version {
 
 		}(ids, g, ch)
 
-
-
 	}
 
 	for i := 0; i < len(sh.dg.State.Guilds); i++ {
-		for s, ver := range <- ch {
+		for s, ver := range <-ch {
 			ids[s] = ver
 		}
 	}
-
 
 	fmt.Println(ids)
 	runtime.GC()

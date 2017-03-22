@@ -15,7 +15,7 @@ var white = color.RGBA{255, 255, 255, 255}
 var black = color.RGBA{0, 0, 0, 255}
 
 func WB(c color.Color) color.Color {
-	var bhalf uint32 = 65535/10
+	var bhalf uint32 = 65535 / 10
 	var whalf uint32 = 65535 - bhalf
 	r, g, b, _ := c.RGBA()
 	if r < bhalf || g < bhalf || b < bhalf {
