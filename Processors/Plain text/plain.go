@@ -237,7 +237,13 @@ func (cm *CompressedMessage) clang() string {
 				}
 			}
 			id = div[:readnext]
-			user, ok := publicai.Users[id]
+			var get string
+			if id[0] == '!' {
+				get = id[1:]
+			} else {
+				get = id
+			}
+			user, ok := publicai.Users[get]
 			if !ok {
 				user = "ERR"
 			}
