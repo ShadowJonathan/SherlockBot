@@ -55,19 +55,38 @@ func (cl *ChatLog) loadsettings() {
 }
 
 func (cl *ChatLog) backlog() {
+	cl.Save()
 	var count int
 	for _, g := range sh.dg.State.Guilds {
 	CH:
 		for _, c := range g.Channels {
+			fmt.Println("Logging new channel:", c.Name)
+			if c.Type != "text" {
+				fmt.Println("Is voice channel, skipping...")
+				continue
+			}
 			var latestid string
 			for count < cl.Settings.ScrubAmount {
 				mess, err := sh.dg.ChannelMessages(c.ID, 100, latestid, "")
 				if err != nil {
-					fmt.Println("Error processing backlog:", err)
+					if strings.Contains(err.Error(), "HTTP 403") {
+						fmt.Println("UNAUTH CHANNEL:", c.Name)
+						continue CH
+					} else {
+						fmt.Println("Error processing backlog:", err)
+						return
+					}
 				}
+				var anyprocess bool
+				var lowest int
 				for _, m := range mess {
+					id, err := strconv.Atoi(m.ID)
+					if (id < lowest || lowest == 0) && err == nil {
+						lowest = id
+					}
 					if ots, _ := m.Timestamp.Parse(); ots.Unix() < cl.Settings.Autologafter.Unix() {
-						break CH
+						fmt.Println("Hit back of chat-channel")
+						continue CH
 					}
 					sm, ok := cl.search(m.ID)
 					if ok {
@@ -80,9 +99,11 @@ func (cl *ChatLog) backlog() {
 								Live: false,
 							})
 							cl.Backlog <- sm
+							anyprocess = true
 							count++
 						}
 					} else {
+						anyprocess = true
 						ts, err := m.EditedTimestamp.Parse()
 						ots, _ := m.Timestamp.Parse()
 						if err != nil {
@@ -98,12 +119,243 @@ func (cl *ChatLog) backlog() {
 						}
 					}
 				}
+				latestid = strconv.Itoa(lowest)
+				if !anyprocess {
+					if latestid == "0" {
+						continue CH
+					}
+					fmt.Println("No unknown messages found around", latestid)
+				}
 			}
 			if count >= cl.Settings.ScrubAmount {
+				fmt.Println("Hit limit of backlogging")
 				return
 			}
 		}
 	}
+PC:
+	for _, c := range sh.dg.State.PrivateChannels {
+		fmt.Println("Logging new channel:", c.Name)
+		if c.Type != "text" {
+			fmt.Println("Is voice channel, skipping...")
+			continue
+		}
+		var latestid string
+		for count < cl.Settings.ScrubAmount {
+			mess, err := sh.dg.ChannelMessages(c.ID, 100, latestid, "")
+			if err != nil {
+				fmt.Println("Error processing backlog:", err)
+				return
+
+			}
+			var anyprocess bool
+			var lowest int
+			for _, m := range mess {
+				id, err := strconv.Atoi(m.ID)
+				if (id < lowest || lowest == 0) && err == nil {
+					lowest = id
+				}
+				if ots, _ := m.Timestamp.Parse(); ots.Unix() < cl.Settings.Autologafter.Unix() {
+					fmt.Println("Hit back of chat-channel")
+					continue PC
+				}
+				sm, ok := cl.search(m.ID)
+				if ok {
+					if sm.TopView != m.Content {
+						sm.TopView = m.Content
+						ts, _ := m.EditedTimestamp.Parse()
+						sm.Edits = append(sm.Edits, &MessageEdit{
+							At:   ts,
+							Edit: m.Content,
+							Live: false,
+						})
+						cl.Backlog <- sm
+						anyprocess = true
+						count++
+					}
+				} else {
+					anyprocess = true
+					ts, err := m.EditedTimestamp.Parse()
+					ots, _ := m.Timestamp.Parse()
+					if err != nil {
+						cl.Backlog <- &Chatmessage{Orig: m.Content, TimeStamp: ots, TopView: m.Content, ID: m.ID, Author: m.Author.ID, Channel: m.ChannelID, Live: false}
+					} else {
+						var M = &Chatmessage{Orig: CHATERR, TimeStamp: ots, TopView: m.Content, ID: m.ID, Author: m.Author.ID, Channel: m.ChannelID, Live: false}
+						M.Edits = append(M.Edits, &MessageEdit{
+							At:   ts,
+							Edit: m.Content,
+							Live: false,
+						})
+						cl.Backlog <- M
+					}
+				}
+			}
+			latestid = strconv.Itoa(lowest)
+			if !anyprocess {
+				if latestid == "0" {
+					continue PC
+				}
+				fmt.Println("No unknown messages found around", latestid)
+			}
+		}
+		if count >= cl.Settings.ScrubAmount {
+			fmt.Println("Hit limit of backlogging")
+			return
+		}
+	}
+}
+
+func (cl *ChatLog) validate() {
+	cl.Mutex.Lock()
+	defer cl.Mutex.Unlock()
+	chatdir, err := ioutil.ReadDir("chatlog")
+	if err != nil {
+		os.Mkdir("chatlog", 0777)
+		return
+	}
+	var All = make(map[string]*Chatmessage)
+	var Dumptill int
+	for _, f := range chatdir {
+		if !f.IsDir() {
+			n := strings.Split(f.Name(), "_")
+			if len(n) == 4 && n[0] == "CC" {
+				if n[1] == "DF" {
+					Dumptill, _ = strconv.Atoi(n[2])
+				}
+				d, err := ioutil.ReadFile("chatlog/" + f.Name())
+				if err != nil {
+					fmt.Println("Error reading file "+f.Name()+",", err)
+					return
+				}
+				var CC = &BufferChunk{}
+				err = json.Unmarshal(d, CC)
+				if err != nil {
+					fmt.Println("Error unmarshalling file "+f.Name()+",", err)
+					return
+				}
+				for _, m := range CC.Messages {
+					All[m.ID] = m
+				}
+			}
+		}
+	}
+	fmt.Println("Read all messages\n" + strconv.Itoa(len(All)) + " messages found")
+	var Saves = make(map[string]*BufferChunk)
+	var DumpSave = &BufferChunk{}
+	var Workingsave = &BufferChunk{}
+
+	// first get the dump out of there
+	for id, m := range All {
+		if i, _ := strconv.Atoi(id); i <= Dumptill {
+			if id == "" {
+				continue
+			}
+			DumpSave.Messages = append(DumpSave.Messages, m)
+			DumpSave.SavedIDs = append(DumpSave.SavedIDs, id)
+		}
+	}
+	for _, id := range DumpSave.SavedIDs {
+		delete(All, id)
+	}
+	DFNAME := fmt.Sprintf("CC_DF_%d_buff.clg", Dumptill)
+
+	// then do the heavy work
+	var latestlowest int
+	var last bool
+	for {
+		var count int
+		for count < 200 {
+			var latestfound int
+			for _, id := range All {
+				if id.ID == "" {
+					continue
+				}
+				var i int
+				var err error
+				if i, err = strconv.Atoi(id.ID); (i < latestfound || latestfound == 0) && i > latestlowest {
+					latestfound = i
+				}
+				if err != nil {
+					fmt.Println("ID ERROR:", id.ID, err)
+				}
+			}
+
+			m, ok := All[strconv.Itoa(latestfound)]
+			if !ok && latestfound != 0 {
+				panic(strconv.Itoa(latestfound) + " " + strconv.Itoa(latestlowest) + " " + strconv.Itoa(len(Workingsave.Messages)) + " " + strconv.Itoa(len(Saves)) + " " + strconv.Itoa(len(All)))
+			} else if !ok && latestfound == 0 {
+				last = true
+				break
+			}
+			Workingsave.Messages = append(Workingsave.Messages, m)
+			latestlowest = latestfound
+			count++
+		}
+		var lowest int
+		var highest int
+		var ids []string
+		for _, m := range Workingsave.Messages {
+			ids = append(ids, m.ID)
+			i, _ := strconv.Atoi(m.ID)
+			if lowest > i || lowest == 0 {
+				lowest = i
+			}
+			if highest < i {
+				highest = i
+			}
+		}
+		Workingsave.SavedIDs = ids
+		name := "CC_" + strconv.Itoa(lowest) + "_" + strconv.Itoa(highest) + "_buff.clg"
+		Saves[name] = Workingsave
+		Workingsave = &BufferChunk{}
+		if last {
+			break
+		}
+	}
+	fmt.Println("Processed all messages\n" + strconv.Itoa(len(Saves)) + " chunks made")
+	var Savefiles []*SaveFile
+	for name, buffer := range Saves {
+		tf, err := json.Marshal(buffer)
+		if err != nil {
+			fmt.Println("Error parsing marshal on "+name+":", err)
+			return
+		}
+		var TF = &SaveFile{
+			Data: tf,
+			Name: name,
+		}
+		Savefiles = append(Savefiles, TF)
+	}
+
+	if len(DumpSave.SavedIDs) > 1 {
+		tf, err := json.Marshal(DumpSave)
+		if err != nil {
+			fmt.Println("Error parsing marshal on "+DFNAME+":", err)
+			return
+		}
+		var TF = &SaveFile{
+			Data: tf,
+			Name: DFNAME,
+		}
+		Savefiles = append(Savefiles, TF)
+	}
+
+	fmt.Println("Prepared all files")
+
+	err = os.RemoveAll("chatlog")
+	if err != nil {
+		fmt.Println("Error while deleting original folder:", err)
+	}
+	err = os.MkdirAll("chatlog", 0777)
+	if err != nil {
+		fmt.Println("Error while creating new folder:", err)
+	}
+
+	for _, file := range Savefiles {
+		ioutil.WriteFile("chatlog/"+file.Name, file.Data, 0777)
+	}
+
+	fmt.Println("Validate complete")
 }
 
 func (cl *ChatLog) work() {
@@ -189,6 +441,7 @@ func (cl *ChatLog) work() {
 			cl.Mutex.Lock()
 			cl.Buffer[bl.ID] = bl
 			cl.Mutex.Unlock()
+			fmt.Println("Processed backlog:", bl.ID)
 		}
 	}
 }
@@ -235,7 +488,6 @@ FINDLOOP:
 			}
 		}
 	}
-	fmt.Println("Unknown error trying to find " + ID)
 	return &Chatmessage{}, false
 }
 
@@ -332,19 +584,17 @@ func (cl *ChatLog) Save() {
 		var lat time.Time
 		var l int
 		var h int
-		var latid string
 		var ids []string
 		for _, m := range AppendtoNew {
 			t, _ := strconv.Atoi(m.ID)
 			if t < l || l == 0 {
 				l = t
 			}
-			if m.TimeStamp.Unix() < e.Unix() || e.IsZero() {
-				e = m.TimeStamp
-			}
 			if t > h {
 				h = t
-				latid = m.ID
+			}
+			if m.TimeStamp.Unix() < e.Unix() || e.IsZero() {
+				e = m.TimeStamp
 			}
 			if m.TimeStamp.Unix() > lat.Unix() {
 				lat = m.TimeStamp
@@ -355,9 +605,6 @@ func (cl *ChatLog) Save() {
 		highest = strconv.Itoa(h)
 		NewSave.Name = "CC_" + lowest + "_" + highest + "_buff"
 		var CC = &BufferChunk{
-			LatestID: latid,
-			From:     e,
-			To:       lat,
 			SavedIDs: ids,
 			Messages: AppendtoNew,
 		}
@@ -434,11 +681,8 @@ type MessageEdit struct {
 }
 
 type BufferChunk struct {
-	From     time.Time      `json:"F,omitempty"`
-	To       time.Time      `json:"T"`
 	SavedIDs []string       `json:"AID"`
 	Messages []*Chatmessage `json:"Ms"`
-	LatestID string         `json:",omitempty"`
 }
 
 type CLSettings struct {
@@ -566,6 +810,10 @@ func (c *ChatBufferResolve) load() error {
 
 func (c *ChatBufferResolve) store() error {
 	for channel, mss := range c.Chs {
+		fmt.Println("Storing", mss.Name)
+		if channel == "" {
+			continue
+		}
 		var Path string
 		if mss.Private {
 			Path = c.AssetPrefix + "/DMs/" + channel + " - " + mss.Name

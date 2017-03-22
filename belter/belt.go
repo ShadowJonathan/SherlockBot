@@ -14,6 +14,7 @@ import (
 
 	"../versions"
 	"github.com/bwmarrin/discordgo"
+	"runtime/debug"
 )
 
 type Version struct {
@@ -519,7 +520,7 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 	defer func() {
 		rec := recover()
 		if rec != nil {
-			fmt.Println("Panicked at ProcessCMD")
+			fmt.Println("Panicked at ProcessCMD\n", rec, "\n"+string(debug.Stack()))
 		}
 	}()
 	fmt.Println("Processing", CMD)
@@ -770,6 +771,7 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 		sh.cl.Save()
 		SendMessage(M.ChannelID, "`Saved chat`", Notifiers)
 	case "backlog":
+		SendMessage(M.ChannelID, "`Processing... please wait.`", Notifiers)
 		sh.cl.backlog()
 		SendMessage(M.ChannelID, "`Saved some back-log`", Notifiers)
 	case "assetize":
@@ -780,6 +782,9 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 		} else {
 			SendMessage(M.ChannelID, "`Assets made`", Notifiers)
 		}
+	case "validate":
+		sh.cl.validate()
+		SendMessage(M.ChannelID, "`Validated`", Notifiers)
 	}
 }
 
