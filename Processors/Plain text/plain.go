@@ -90,6 +90,9 @@ func main() {
 		}
 		for _, file := range localdir {
 			s := strings.Split(file.Name(), "-")
+			if len(s) == 1 {
+				continue
+			}
 			n, err := strconv.Atoi(s[0])
 			if err != nil {
 				panic(err)
@@ -107,6 +110,9 @@ func main() {
 		privatewithdays[ch] = make(map[int]string)
 		for _, file := range localdir {
 			s := strings.Split(file.Name(), "-")
+			if len(s) == 1 {
+				continue
+			}
 			n, err := strconv.Atoi(s[0])
 			if err != nil {
 				panic(err)
@@ -159,6 +165,25 @@ func (w *work) make() {
 				panic(err)
 			}
 			ioutil.WriteFile("plain/"+w.orig.assetinfo.Channels[ch]+"/"+strings.Replace(messagefile, ".cpm", ".chat", -1), w.cf.data, 0777)
+		}
+	}
+	for ch, files := range w.orig.pwd {
+		for _, messagefile := range files {
+			f, err := ioutil.ReadFile(w.orig.assetdir + "/DMs/" + ch + " - " + w.orig.assetinfo.Channels[ch] + "/" + messagefile)
+			if err != nil {
+				panic(err)
+			}
+			w.cf.messages = &[]*CompressedMessage{}
+			err = json.Unmarshal(f, w.cf.messages)
+			if err != nil {
+				panic(err)
+			}
+			w.cf.parse()
+			err = os.MkdirAll("plain/DMs/"+w.orig.assetinfo.Channels[ch], 0777)
+			if err != nil {
+				panic(err)
+			}
+			ioutil.WriteFile("plain/DMs/"+w.orig.assetinfo.Channels[ch]+"/"+strings.Replace(messagefile, ".cpm", ".chat", -1), w.cf.data, 0777)
 		}
 	}
 }
