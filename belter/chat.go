@@ -793,7 +793,7 @@ type DetailOR struct {
 */
 
 type CompressedMessage struct {
-	TopDown  string               `json:"TD"`
+	Original string               `json:"O"`
 	Versions map[time.Time]string `json:"Vs,omitempty"`
 	Del      bool                 `json:"D,omitempty"`
 	Time     time.Time            `json:"T"`
@@ -972,11 +972,11 @@ func (r *ResolveChat) Work() error {
 	Mess := r.Orig.TotalBuffer
 	for _, m := range Mess {
 		M := &CompressedMessage{
-			TopDown: m.TopView,
-			Del:     m.Deleted,
-			Time:    m.TimeStamp,
-			Author:  m.Author,
-			ID:      m.ID,
+			Original: m.Orig,
+			Del:      m.Deleted,
+			Time:     m.TimeStamp,
+			Author:   m.Author,
+			ID:       m.ID,
 		}
 		if len(m.Edits) > 0 {
 			M.Versions = make(map[time.Time]string)

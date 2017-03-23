@@ -243,7 +243,7 @@ func (s *stringify) str() {
 
 func (cm *CompressedMessage) clang() string {
 	var temp []string
-	var message = "    " + cm.TopDown
+	var message = "    " + cm.Original
 	message = strings.Replace(message, "\n", "\n    ", -1)
 	divide := strings.Split(message, "<@")
 	var replace = make(map[string]string)
@@ -280,7 +280,7 @@ func (cm *CompressedMessage) clang() string {
 	}
 	temp = append(temp, message)
 	for t, ver := range cm.Versions {
-		if ver == cm.TopDown {
+		if ver == cm.Original {
 			continue
 		} else {
 			h, min, sec := t.Hour(), t.Minute(), t.Second()
@@ -332,7 +332,7 @@ type assetinfo struct {
 }
 
 type CompressedMessage struct {
-	TopDown  string               `json:"TD"`
+	Original string               `json:"O"`
 	Versions map[time.Time]string `json:"Vs,omitempty"`
 	Del      bool                 `json:"D,omitempty"`
 	Time     time.Time            `json:"T"`
