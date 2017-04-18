@@ -272,8 +272,11 @@ func (cl *ChatLog) validate() {
 	var latestlowest int
 	var last bool
 	for {
+		// MASSIVELY UNOPTIMIZED, TAKES EXPONENTIONAL LONGER AMOUNTS OF TIME WITH MORE MESSAGES
+		// PLANNING TO MAKE USE OF THE "sort" LIB
+
 		var count int
-		for count < 200 {
+		for count < 400 {
 			var latestfound int
 			for _, id := range All {
 				if id.ID == "" {
@@ -317,6 +320,7 @@ func (cl *ChatLog) validate() {
 		name := "CC_" + strconv.Itoa(lowest) + "_" + strconv.Itoa(highest) + "_buff.clg"
 		Saves[name] = Workingsave
 		Workingsave = &BufferChunk{}
+		fmt.Println("Made new chunk")
 		if last {
 			break
 		}

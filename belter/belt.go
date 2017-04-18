@@ -338,7 +338,7 @@ var currentlyrunningloop chan bool
 var running bool
 
 func init() {
-	currentlyrunningloop = make(chan bool, 1)
+	currentlyrunningloop = make(chan bool)
 }
 
 func StartCheckLoop() {
