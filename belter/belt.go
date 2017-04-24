@@ -1,6 +1,7 @@
 package Belt
 
 import (
+	"bufio"
 	fmt "fmt"
 	"io/ioutil"
 	"os"
@@ -498,7 +499,10 @@ func BBCreateMessage(Ses *discordgo.Session, MesC *discordgo.MessageCreate) {
 	sh.cl.Mess <- Mes
 	if Mes.Content != "" {
 		if Mes.Content[0] == '!' {
-			ProcessCMD(Mes.Content[1:], MesC.Message, sh.Notifiers)
+			result := ProcessCMD(Mes.Content[1:])
+			for _, r := range result {
+				SendMessage(Mes.ChannelID, r, sh.Notifiers)
+			}
 		}
 	}
 }
@@ -517,7 +521,7 @@ func TL(s string) string {
 	return strings.ToLower(s)
 }
 
-func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
+func ProcessCMD(CMD string) (response []string) {
 	defer func() {
 		rec := recover()
 		if rec != nil {
@@ -534,16 +538,21 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 	if len(Commands) > 2 {
 		thirdArg = Commands[2]
 	}
+
+	add := func(s string) {
+		response = append(response, s)
+	}
+
 	switch TL(Commands[0]) {
 	case "primeguild":
 		{
 			if SecArg == "" {
-				SendMessage(M.ChannelID, "`You gave me a nil ID!`", Notifiers)
+				add("`You gave me a nil ID!`")
 			} else {
 				data := []byte(SecArg)
 				ioutil.WriteFile("PrimeGuild", data, 9000)
 				fmt.Println("Set new Prime Guild to '" + SecArg + "'")
-				SendMessage(M.ChannelID, "`Set new prime guild to "+SecArg+"`", sh.Notifiers)
+				add("`Set new prime guild to " + SecArg + "`")
 			}
 		}
 	case "stopcheck":
@@ -551,16 +560,16 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 			if !sh.StopLoop {
 				sh.StopLoop = true
 				fmt.Println("Checking loop stopped")
-				SendMessage(M.ChannelID, "`Stopped checking loop`", sh.Notifiers)
+				add("`Stopped checking loop`")
 			}
 			if sh.StopLoop {
-				SendMessage(M.ChannelID, "`Checking loop isn't running!`", sh.Notifiers)
+				add("`Checking loop isn't running!`")
 			}
 		}
 	case "kickstart":
 		{
 			StartCheckLoop()
-			SendMessage(M.ChannelID, "`Checking loop started`", sh.Notifiers)
+			add("`Checking loop started`")
 		}
 	case "getuser":
 		{
@@ -575,30 +584,30 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 			var TotS string
 			switch errT {
 			case 0:
-				SendMessage(M.ChannelID, GMstring(U.User.ID), sh.Notifiers)
+				add(GMstring(U.User.ID))
 			case 1:
-				SendMessage(M.ChannelID, "`You gave me no user to check! Use it like this: !getuser <ID>/<Name>(#<discriminator>) (-e)`\n`Use -e to make lower and uppercase count in the search`", sh.Notifiers)
+				add("`You gave me no user to check! Use it like this: !getuser <ID>/<Name>(#<discriminator>) (-e)`\n`Use -e to make lower and uppercase count in the search`")
 			case 2:
-				SendMessage(M.ChannelID, "`I couldnt find '"+Commands[1]+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have misspelled it, try <Name>(#<discriminator>) instead of an ID, or double-check what you (probably) pasted.`", sh.Notifiers)
+				add("`I couldnt find '" + Commands[1] + "'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have misspelled it, try <Name>(#<discriminator>) instead of an ID, or double-check what you (probably) pasted.`")
 			case 3:
 				if e {
 					TotS = strings.Join(Commands[1:len(Commands)-1], " ")
 				} else {
 					TotS = strings.Join(Commands[1:], " ")
 				}
-				SendMessage(M.ChannelID, "`I couldnt find '"+TotS+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have misspelled it, try <Name>(#<discriminator>) instead of just a name or nickname, or double-check what you typed.`", sh.Notifiers)
+				add("`I couldnt find '" + TotS + "'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have misspelled it, try <Name>(#<discriminator>) instead of just a name or nickname, or double-check what you typed.`")
 			case 4:
 				if e {
 					TotS = strings.Join(Commands[1:len(Commands)-2], " ")
 				} else {
 					TotS = strings.Join(Commands[1:], " ")
 				}
-				SendMessage(M.ChannelID, "`I couldnt find '"+TotS+"'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have misspelled it, try <Name>(#<discriminator>) instead of just a name or nickname, or double-check what you typed.`", sh.Notifiers)
+				add("`I couldnt find '" + TotS + "'! Note; this user might've left, which means i can't look him up anymore.`\n`You can also have misspelled it, try <Name>(#<discriminator>) instead of just a name or nickname, or double-check what you typed.`")
 			case 5:
-				SendMessage(M.ChannelID, "`Error 5, this is outside your hands, contact the owner of this bot immidiatly.`", sh.Notifiers)
+				add("`Error 5, this is outside your hands, contact the owner of this bot immidiatly.`")
 			case 6:
 				if len(IDs) > 10 {
-					SendMessage(M.ChannelID, "`More than 10 users have this user/nickname... `~~`(Are they having a party over there?)`~~\n`Try to define your search with a discriminator (<Name>#<discriminator>), or count upper and lower case by putting a \"-e\" behind your input.`", sh.Notifiers)
+					add("`More than 10 users have this user/nickname... `~~`(Are they having a party over there?)`~~\n`Try to define your search with a discriminator (<Name>#<discriminator>), or count upper and lower case by putting a \"-e\" behind your input.`")
 				}
 				var NamesA []string
 				G, err := GetGuild(GetPG())
@@ -611,16 +620,16 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 				}
 				Names := strings.Join(NamesA[:len(NamesA)-1], ", ")
 				Names = Names + " and " + NamesA[len(NamesA)-1]
-				SendMessage(M.ChannelID, "`I found more than one user; "+Names+".`\n`Try to define your search with a discriminator (<Name>#<discriminator>), or count upper and lower case by putting a \"-e\" behind your input.`", sh.Notifiers)
+				add("`I found more than one user; " + Names + ".`\n`Try to define your search with a discriminator (<Name>#<discriminator>), or count upper and lower case by putting a \"-e\" behind your input.`")
 			case 7:
-				SendMessage(M.ChannelID, "`Error 7, i found more than one user that have this username AND discriminator, use \"-e\" behind your input, please.`", sh.Notifiers)
+				add("`Error 7, i found more than one user that have this username AND discriminator, use \"-e\" behind your input, please.`")
 			case 8:
-				SendMessage(M.ChannelID, "`Error 8, please contact the bot's owner.`", sh.Notifiers)
+				add("`Error 8, please contact the bot's owner.`")
 			}
 		}
 	case "getchannel":
 		{
-			SendMessage(M.ChannelID, GCstring(SecArg), sh.Notifiers)
+			add(GCstring(SecArg))
 		}
 	case "getguild":
 		{
@@ -637,37 +646,31 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 			for _, Ch := range GG.Channels {
 				Channels = append(Channels, GCstring(Ch.ID))
 			}
-			SendChannel, err := sh.dg.UserChannelCreate(M.Author.ID)
-			if err != nil {
-				return
-			}
-			var not []string
-			not = append(not, SendChannel.ID)
 			Owner := GetUser(GG.OwnerID, GG)
 			var own string
 			own = Owner.ID
-			SendMessage(SendChannel.ID, "`Guild:`\n`ID: "+GG.ID+"`\n`Name: "+GG.Name+"`\n`Region: "+GG.Region+"`\n`Icon: `"+discordgo.EndpointGuildIcon(GG.ID, GG.Icon), not)
-			SendMessage(SendChannel.ID, "`Owner`\n"+GMstring(own), not)
-			SendMessage(SendChannel.ID, "`Channels:`", not)
+			add("`Guild:`\n`ID: " + GG.ID + "`\n`Name: " + GG.Name + "`\n`Region: " + GG.Region + "`\n`Icon: `" + discordgo.EndpointGuildIcon(GG.ID, GG.Icon))
+			add("`Owner`\n" + GMstring(own))
+			add("`Channels:`")
 			for _, CHS := range Channels {
-				SendMessage(SendChannel.ID, CHS, not)
+				add(CHS)
 			}
 		}
 	case "getrole":
 		{
 			if SecArg == "" {
-				SendMessage(M.ChannelID, "`You gave me a nil role!`", sh.Notifiers)
+				add("`You gave me a nil role!`")
 				return
 			}
 			data, users := GRstring(SecArg)
-			SendMessage(M.ChannelID, data, sh.Notifiers)
+			add(data)
 			if strings.ToLower(thirdArg) == "users" || strings.ToLower(thirdArg) == "user" {
 
 				if len(users) > 1999 {
-					SendMessage(M.ChannelID, "`(Cannot send users, too many have this role!)`", sh.Notifiers)
+					add("`(Cannot send users, too many have this role!)`")
 					return
 				}
-				SendMessage(M.ChannelID, users, sh.Notifiers)
+				add(users)
 			}
 		}
 	case "getpermissions":
@@ -676,47 +679,48 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 			if SecArg != "" {
 				perm = SecArg
 			} else {
-				SendMessage(M.ChannelID, "`You gave me a nil permission number!`", sh.Notifiers)
+				add("`You gave me a nil permission number!`")
 				return
 			}
 			PerMap := ParsePermissions(GetB10(perm))
 			Perms := GetPermissions(PerMap)
 			PerS := strings.Join(Perms, ", ")
-			SendMessage(M.ChannelID, "`Permissions for: "+SecArg+"`\n`Binary: "+GetBit(GetB10(perm))+"`\n`Perms: "+PerS+"`", sh.Notifiers)
+			add("`Permissions for: " + SecArg + "`\n`Binary: " + GetBit(GetB10(perm)) + "`\n`Perms: " + PerS + "`")
 		}
 	case "stop":
 		{
-			SendMessage(M.ChannelID, "`Stopping bot...`", sh.Notifiers)
+			add("`Stopping bot...`")
 			sh.Stop = true
 		}
 	case "restart":
 		{
-			SendMessage(M.ChannelID, "`Restarting bot...`", sh.Notifiers)
+			add("`Restarting bot...`")
 			restart = true
 			sh.Stop = true
 		}
 	case "upgrade":
 		{
-			SendMessage(M.ChannelID, "`Upgrading bot...`", sh.Notifiers)
+			add("`Upgrading bot...`")
 			upgrade = true
 			sh.Stop = true
 		}
-	case "getlog":
-		{
-			for _, n := range sh.Notifiers {
-				if M.ChannelID == n {
-					file, err := os.Open("log.txt")
-					if err != nil {
-						fmt.Println(err)
+		/*
+			case "getlog":
+				{
+					for _, n := range sh.Notifiers {
+						if M.ChannelID == n {
+							file, err := os.Open("log.txt")
+							if err != nil {
+								fmt.Println(err)
+							}
+							_, err = sh.dg.ChannelFileSend(M.ChannelID, "log.txt", file)
+							if err != nil {
+								fmt.Println(err)
+							}
+							return
+						}
 					}
-					_, err = sh.dg.ChannelFileSend(M.ChannelID, "log.txt", file)
-					if err != nil {
-						fmt.Println(err)
-					}
-					return
-				}
-			}
-		}
+				}*/
 	case "broadcast":
 		{
 			var up bool
@@ -726,7 +730,7 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 			} else if TL(SecArg) == "down" {
 				up = false
 			} else {
-				SendMessage(M.ChannelID, "`You gave me no instruction!`", Notifiers)
+				add("`You gave me no instruction!`")
 				return
 			}
 			if TL(thirdArg) == "false" {
@@ -734,59 +738,60 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 			}
 			swap(up, ver)
 			if up && !ver {
-				SendMessage(M.ChannelID, "`Broadcasting sherlock identifier...`", Notifiers)
+				add("`Broadcasting sherlock identifier...`")
 			} else if !up {
-				SendMessage(M.ChannelID, "`Stopped broadcasting...`", Notifiers)
+				add("`Stopped broadcasting...`")
 			} else if ver && up {
-				SendMessage(M.ChannelID, "`Broadcasting sherlock identifier with version...`", Notifiers)
+				add("`Broadcasting sherlock identifier with version...`")
 			}
 		}
 	case "sweep":
-		SendMessage(M.ChannelID, "`Sweeping...`", Notifiers)
+		add("`Sweeping...`")
 		shs := sweep()
 		if len(shs) != 0 {
 			if len(shs) == 1 {
-				SendMessage(M.ChannelID, "`I found 1 Sherlock:`", Notifiers)
+				add("`I found 1 Sherlock:`")
 			} else {
-				SendMessage(M.ChannelID, "`I found "+intToString(len(shs))+" Sherlock:`", Notifiers)
+				add("`I found " + intToString(len(shs)) + " Sherlock:`")
 			}
 			for id := range shs {
-				SendMessage(M.ChannelID, "`"+id+": "+GetUS(id).Username+"`", Notifiers)
+				add("`" + id + ": " + GetUS(id).Username + "`")
 			}
 		} else {
-			SendMessage(M.ChannelID, "`I found no Sherlocks...`", Notifiers)
+			add("`I found no Sherlocks...`")
 		}
 	case "identify":
 		U, errT, _ := GetMemRaw(Commands[1:])
 		if errT != 0 {
-			SendMessage(M.ChannelID, "`Error parsing ID or name, try again, or use !getuser with these same parameters to see what's wrong.`", Notifiers)
+			add("`Error parsing ID or name, try again, or use !getuser with these same parameters to see what's wrong.`")
 			return
 		}
 		ok, _ := identify(U)
 		if ok {
-			SendMessage(M.ChannelID, "`"+U.User.Username+" is a Sherlock.`", Notifiers)
+			add("`" + U.User.Username + " is a Sherlock.`")
 		} else {
-			SendMessage(M.ChannelID, "`"+U.User.Username+" is not a (visible) Sherlock.`", Notifiers)
+			add("`" + U.User.Username + " is not a (visible) Sherlock.`")
 		}
 	case "savechat":
 		sh.cl.Save()
-		SendMessage(M.ChannelID, "`Saved chat`", Notifiers)
+		add("`Saved chat`")
 	case "backlog":
-		SendMessage(M.ChannelID, "`Processing... please wait.`", Notifiers)
+		add("`Processing... please wait.`")
 		sh.cl.backlog()
-		SendMessage(M.ChannelID, "`Saved some back-log`", Notifiers)
+		add("`Saved some back-log`")
 	case "assetize":
 		AS := new(ChatBufferResolve)
 		err := AS.Assetize(SecArg, thirdArg, false)
 		if err != nil {
-			SendMessage(M.ChannelID, "`Error: "+err.Error()+"`", Notifiers)
+			add("`Error: " + err.Error() + "`")
 		} else {
-			SendMessage(M.ChannelID, "`Assets made`", Notifiers)
+			add("`Assets made`")
 		}
 	case "validate":
 		sh.cl.validate()
-		SendMessage(M.ChannelID, "`Validated`", Notifiers)
+		add("`Validated`")
 	}
+	return
 }
 
 func DeepEqual(a *discordgo.Guild, b *discordgo.Guild) (bool, *FullChangeStruct) {
@@ -880,7 +885,19 @@ func Initialize(Token string) (bool, bool) {
 	logf = log.New(l, "SH: ", log.LstdFlags)
 	defer finish()
 	Log("BOOT")
+
 	err = sh.dg.Open()
+
+	go func() {
+		for {
+			input := GetInput()
+			response := ProcessCMD(input)
+			for _, s := range response {
+				fmt.Println(s)
+			}
+		}
+	}()
+
 	if err == nil {
 		fmt.Println("Discord: Connection established")
 		for !sh.Stop {
@@ -889,6 +906,7 @@ func Initialize(Token string) (bool, bool) {
 	} else {
 		fmt.Println("Error opening websocket connection: ", err.Error())
 	}
+
 	sh.StopLoop = true
 	fmt.Println("SH: Sherlock stopping...")
 	sh.dg.Close()
@@ -904,5 +922,21 @@ func finish() {
 	} else if !restart && !upgrade {
 		Log("SHUTDOWN")
 		l.Close()
+	}
+}
+
+func GetInput() string {
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		fmt.Print(">")
+
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		response = strings.TrimSpace(response)
+		return response
 	}
 }
