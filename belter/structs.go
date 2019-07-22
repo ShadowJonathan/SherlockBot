@@ -78,6 +78,7 @@ type FullMention struct {
 	Members   []*MemberChange
 	Roles     []*RoleChange
 	OwnerID   string
+	owner     bool
 }
 
 type TimeFormat struct {
@@ -107,6 +108,9 @@ type PrimeSuspectChange struct {
 	RC       []*PSRolechange
 	channels bool
 	CC       []*PSchannelchange
+	owner    bool
+	OldOwner string
+	NewOwner string
 }
 
 type PSMemberchange struct {
@@ -122,27 +126,23 @@ type PSMemberchange struct {
 	}
 	Owner      bool
 	Isownernow bool
+	EXcrisis   bool
+	join       bool
+	leave      bool
 }
 type PSRolechange struct { // Role that the PS has that is changed or added
-	ID    string
-	allow bool
-	Allow struct {
-		Last string
-		New  string
-	}
-	deny bool
-	Deny struct {
-		Last string
-		New  string
-	}
+	ID          string
+	perms       bool
+	oldPerms    int
+	newPerms    int
 	pos         bool
 	PosOld      int
 	PosNew      int
 	Existcrisis bool
 	Deleted     bool
-	Dperm       string //permissions before the delete
+	Dperm       int //permissions before the delete
 	Made        bool
-	Mper        string //permissions after the creation, ignore if 0
+	Mper        int //permissions after the creation, ignore if 0
 }
 
 type PSchannelchange struct { // Channel with OR permission change related to the PS
@@ -150,19 +150,25 @@ type PSchannelchange struct { // Channel with OR permission change related to th
 	Type  string
 	allow bool
 	Allow struct {
-		Last string
-		New  string
+		Last int
+		New  int
 	}
 	deny bool
 	Deny struct {
-		Last string
-		New  string
+		Last int
+		New  int
 	}
 	Existentcrisis bool
 	Deleted        bool
-	Dperm          string //permissions before the delete
-	Made           bool
-	Mper           string //permissions after the creation, ignore if 0
+	Dperm          struct { //permissions before the delete
+		Allowed int
+		Denied  int
+	}
+	Made bool
+	Mper struct { //permissions after the creation, ignore if 0
+		Allowed int
+		Denied  int
+	}
 }
 
 type Permissions struct {

@@ -26,6 +26,7 @@ type Sherlock struct {
 	StopLoop      bool
 	Notifiers     []string
 	PrimeSuspects []string
+	Case_channel  string
 }
 
 // Vars after this
@@ -56,7 +57,14 @@ func CheckChange(G *GuildInfo, GID string) (bool, *discordgo.Guild, *FullChangeS
 			panic(ChGl)
 		}
 	}
-	Equal, FCS := DeepEqual(G.g, ChGl)
+	Equal, FCS, PSyes, MPSC := DeepEqual(G.g, ChGl)
+	if PSyes {
+		var bichange = &CompiledChange{
+			Old: G.g,
+			New: ChGl,
+		}
+		HandleCase(MPSC, bichange)
+	}
 	return Equal, ChGl, FCS
 }
 
@@ -488,38 +496,16 @@ func ProcessCMD(CMD string, M *discordgo.Message, Notifiers []string) {
 	}
 }
 
-func DeepEqual(a *discordgo.Guild, b *discordgo.Guild) (bool, *FullChangeStruct) {
+func DeepEqual(a *discordgo.Guild, b *discordgo.Guild) (bool, *FullChangeStruct, bool, []*PrimeSuspectChange) {
 	var Equal = true
 	var TotC = &FullChangeStruct{}
-	Equal, TotC, _ = CompareGuild(a, b, TotC, Equal) // replace _ -> Men
-	//var Comp = &CompiledChange{
-	//	Old: a,
-	//	New: b,
-	//}
-	//PSchanges, PSyes := HandleMention(Men, Comp) // mentioning chain
-	return Equal, TotC
-}
-
-// prime suspect dealing
-
-func HandleMention(Men *FullMention, biChange *CompiledChange) (*PrimeSuspectChange, bool) {
-	PS := sh.PrimeSuspects
-	//var PSC = &PrimeSuspectChange{}
-	//Old := biChange.Old
-	//New := biChange.New
-	for _, Ps := range PS {
-		for _, C := range Men.ChannelOR {
-			if C.perms {
-				for _, Or := range C.Perms {
-					if Or.ID == Ps {
-
-					}
-				}
-			}
-		}
+	Equal, TotC, Men := CompareGuild(a, b, TotC, Equal) // replace _ -> Men
+	var Comp = &CompiledChange{
+		Old: a,
+		New: b,
 	}
-	var PSS = &PrimeSuspectChange{}
-	return PSS, false
+	PSchanges, PSyes := HandleMention(Men, Comp)
+	return Equal, TotC, PSyes, PSchanges
 }
 
 // init
@@ -552,6 +538,14 @@ func Initialize(Token string) {
 	} else {
 		var sus []string
 		sh.PrimeSuspects = sus
+	}
+
+	CC, err := GetCaseChannel()
+	if err == nil {
+		sh.Case_channel = CC
+	} else {
+		var CC string
+		sh.Case_channel = CC
 	}
 	// "269441095862190082", "270639478379511809"
 	notifiers, err = GetNotifiers()

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
+	"strconv"
 )
 
 // overwrite
@@ -451,18 +452,18 @@ func CompareGuild(a *discordgo.Guild, b *discordgo.Guild, TotC *FullChangeStruct
 	Equal, TotC = CompareChannels(a.Channels, b.Channels, TotC, Equal)
 	Equal, TotC = CompareMembers(a.Members, b.Members, TotC, Equal)
 	Equal, TotC = CompareRoles(a.Roles, b.Roles, TotC, Equal)
-	var empty = &FullChangeStruct{}
-	if TotC != empty {
+	if !Equal {
 		fmt.Println("Debug change data:")
 		line, _ := json.Marshal(TotC)
 		fmt.Println(string(line))
-		fmt.Println(Equal)
 	}
+	fmt.Println("C: " + strconv.FormatBool(Equal))
 	var MenT = &FullMention{
 		ChannelOR: TotC.Channels,
 		Members:   TotC.Members,
 		Roles:     TotC.Roles,
 		OwnerID:   b.OwnerID,
+		owner:     TotC.Guild.OwnerID,
 	}
 	return Equal, TotC, MenT
 }

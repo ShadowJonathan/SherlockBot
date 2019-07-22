@@ -186,7 +186,7 @@ func GRstring(role string) (string, string) {
 	Role := GetRole(role, GG)
 	var returnS string
 	var return2 string
-	returnS = "`Role:`\n`ID: " + Role.ID + "`\n`Name: " + Role.Name + "`\n`Bot Role: " + strconv.FormatBool(Role.Managed) + "`\n`Mentionable: " + strconv.FormatBool(Role.Mentionable) + "`\n`Special tab in sidebar: " + strconv.FormatBool(Role.Hoist) + "`\n`Color: " + strconv.FormatInt(int64(Role.Color), 16) + "`\n`Position (acending): " + strconv.FormatInt(int64(Role.Position), 10) + "`\n`Permissions: " + strconv.FormatInt(int64(Role.Permissions), 10)
+	returnS = "`Role:`\n`ID: " + Role.ID + "`\n`Name: " + Role.Name + "`\n`Bot Role: " + strconv.FormatBool(Role.Managed) + "`\n`Mentionable: " + strconv.FormatBool(Role.Mentionable) + "`\n`Special tab in sidebar: " + strconv.FormatBool(Role.Hoist) + "`\n`Color: " + strconv.FormatInt(int64(Role.Color), 16) + "`\n`Position (acending): " + strconv.FormatInt(int64(Role.Position), 10) + "`\n`Permissions: " + strconv.FormatInt(int64(Role.Permissions), 10) + "`"
 	var people []string
 	for _, P := range GG.Members {
 		for _, R := range P.Roles {
@@ -274,6 +274,17 @@ func GetSuspects() ([]string, error) {
 
 }
 
+func GetCaseChannel() (string, error) {
+	DATA, err := ioutil.ReadFile("CC")
+	if DATA == nil {
+		var S string
+		return S, err
+	}
+	TotalString := string(DATA)
+	return TotalString, nil
+
+}
+
 func WriteGLDfile(G *GuildInfo, Isb bool) error {
 	if G.g == nil {
 		panic(G.g)
@@ -327,6 +338,15 @@ func GetB10(Bit string) int {
 func AltB10(Bit string) int {
 	B10, _ := strconv.ParseInt(Bit, 0, 0)
 	return int(B10)
+}
+
+func HasRole(User *discordgo.Member, Role string) bool {
+	for _, ID := range User.Roles {
+		if ID == Role {
+			return true
+		}
+	}
+	return false
 }
 
 func ParsePermissions(Perm int) *Permissions { // perm in base 10
